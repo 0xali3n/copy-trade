@@ -15,7 +15,9 @@
     "grid-bot": "ts-node src/gridTradingBot.ts",
     "monitor-positions": "ts-node src/monitorPositions.ts",
     "close-position": "ts-node src/closePosition.ts",
-    "websocket-bot": "ts-node src/websocketTradingBot.ts"
+    "websocket-bot": "ts-node src/websocketTradingBot.ts",
+    "exit-bot": "ts-node src/exitOrderBot.ts",
+    "position-bot": "ts-node src/positionBasedExitBot.ts"
   },
   "keywords": [
     "kana",

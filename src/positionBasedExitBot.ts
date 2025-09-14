@@ -11,21 +11,24 @@ import axios from "axios";
 import WebSocket from "ws";
 import { config, validateConfig, getTimestamp } from "./config";
 
-interface TradeFillData {
+interface PositionData {
   address: string;
-  fee: string;
+  entry_price: string;
+  is_long: boolean;
   last_updated: string;
+  leverage: number;
+  liq_price: string;
+  margin: string;
   market_id: string;
-  order_type: number;
-  pnl: string;
-  price: string;
   size: string;
-  timestamp: string;
+  sl: string | null;
+  tp: string | null;
   trade_id: string;
+  value: string;
 }
 
-interface TradeHistoryUpdate {
-  data: TradeFillData[];
+interface PositionUpdate {
+  data: PositionData[];
   message: string;
 }
 
@@ -47,7 +50,7 @@ interface OrderResult {
   error?: string;
 }
 
-class WebSocketTradingBot {
+class PositionBasedExitBot {
   private aptos: Aptos;
   private account: Account;
   private ws: WebSocket | null = null;
@@ -57,8 +60,8 @@ class WebSocketTradingBot {
   private maxReconnectAttempts: number = 10;
   private reconnectDelay: number = 5000; // 5 seconds
   private pingInterval: NodeJS.Timeout | null = null;
-  private trackedFills: Set<string> = new Set(); // Track trade_ids to avoid duplicate processing
-  private botStartTime: number = 0; // Track when bot started to filter old fills
+  private previousPositions: Map<string, PositionData> = new Map(); // Track previous positions
+  private botStartTime: number = 0; // Track when bot started
 
   constructor() {
     const aptosConfig = new AptosConfig({ network: Network.MAINNET });
@@ -75,7 +78,9 @@ class WebSocketTradingBot {
 
   async initialize(): Promise<void> {
     try {
-      console.log(`${getTimestamp()} - Initializing WebSocket Trading Bot...`);
+      console.log(
+        `${getTimestamp()} - Initializing Position-Based Exit Bot...`
+      );
 
       // Record bot start time
       this.botStartTime = Math.floor(Date.now() / 1000);
@@ -86,7 +91,9 @@ class WebSocketTradingBot {
       // Connect to WebSocket
       await this.connectWebSocket();
 
-      console.log(`${getTimestamp()} - Bot initialized successfully!`);
+      console.log(
+        `${getTimestamp()} - Position-Based Exit Bot initialized successfully!`
+      );
     } catch (error) {
       console.error(`${getTimestamp()} - Failed to initialize bot:`, error);
       throw error;
@@ -141,8 +148,8 @@ class WebSocketTradingBot {
           this.isConnected = true;
           this.reconnectAttempts = 0;
 
-          // Subscribe to trade history (order fills)
-          this.subscribeToTradeHistory();
+          // Subscribe to position updates
+          this.subscribeToPositions();
 
           // Start ping interval
           this.startPingInterval();
@@ -185,7 +192,7 @@ class WebSocketTradingBot {
     });
   }
 
-  private subscribeToTradeHistory(): void {
+  private subscribeToPositions(): void {
     if (!this.ws || !this.profileAddress) {
       console.error(
         `${getTimestamp()} - Cannot subscribe: WebSocket or profile address not available`
@@ -194,13 +201,13 @@ class WebSocketTradingBot {
     }
 
     const subscriptionMessage = {
-      topic: "trade_history",
+      topic: "positions",
       address: this.profileAddress,
     };
 
     this.ws.send(JSON.stringify(subscriptionMessage));
     console.log(
-      `${getTimestamp()} - Subscribed to trade history (order fills) for address: ${
+      `${getTimestamp()} - Subscribed to position updates for address: ${
         this.profileAddress
       }`
     );
@@ -210,8 +217,8 @@ class WebSocketTradingBot {
     try {
       const data: any = JSON.parse(message);
 
-      if (data.message === "trade_history" && data.data) {
-        this.processTradeFills(data.data);
+      if (data.message === "positions" && data.data) {
+        this.processPositionUpdates(data.data);
       }
     } catch (error) {
       console.error(
@@ -221,143 +228,113 @@ class WebSocketTradingBot {
     }
   }
 
-  private getOrderTypeDescription(orderType: number): string {
-    const descriptions: { [key: number]: string } = {
-      1: "Market Buy",
-      2: "Limit Buy",
-      3: "Stop Buy",
-      4: "Market Sell",
-      5: "Limit Sell",
-      6: "Stop Sell",
-      7: "Market Exit Long",
-      8: "Limit Exit Long",
-      9: "Stop Exit Long",
-      10: "Market Exit Short",
-      11: "Limit Exit Short",
-      12: "Stop Exit Short",
-    };
-    return descriptions[orderType] || `Unknown (${orderType})`;
-  }
-
-  private processTradeFills(fills: TradeFillData[]): void {
+  private processPositionUpdates(currentPositions: PositionData[]): void {
     console.log(
-      `${getTimestamp()} - Processing ${fills.length} trade fills...`
+      `${getTimestamp()} - Processing ${
+        currentPositions.length
+      } current positions...`
     );
 
-    for (const fill of fills) {
-      const fillTimestamp = parseInt(fill.timestamp);
-      const isNewFill = !this.trackedFills.has(fill.trade_id);
-      const isAfterBotStart = fillTimestamp >= this.botStartTime;
+    // Create a map of current positions for easy lookup
+    const currentPositionMap = new Map<string, PositionData>();
+    currentPositions.forEach((position) => {
+      currentPositionMap.set(position.trade_id, position);
+    });
 
-      console.log(
-        `${getTimestamp()} - Fill analysis: Trade ID ${
-          fill.trade_id
-        }, Order Type ${
-          fill.order_type
-        }, New: ${isNewFill}, After Start: ${isAfterBotStart}, Timestamp: ${fillTimestamp}, Bot Start: ${
-          this.botStartTime
-        }`
-      );
-
-      // Check if this is a new fill we haven't processed yet
-      if (isNewFill) {
-        // Only show fills that happened after bot started
-        if (isAfterBotStart) {
-          this.trackedFills.add(fill.trade_id);
-
-          // Display fill information
-          console.log(`${getTimestamp()} - Order Fill Detected:`);
-          console.log(`  Trade ID: ${fill.trade_id}`);
-          console.log(`  Market ID: ${fill.market_id}`);
-          console.log(
-            `  Order Type: ${fill.order_type} (${this.getOrderTypeDescription(
-              fill.order_type
-            )})`
-          );
-          console.log(`  Fill Price: $${fill.price}`);
-          console.log(`  Size: ${fill.size}`);
-          console.log(`  Fee: ${fill.fee}`);
-          console.log(`  PnL: ${fill.pnl}`);
-          console.log(`  Timestamp: ${fill.timestamp}`);
-          console.log("---");
-
-          // Check if this is a BUY order fill (order_type 1, 2, or 3 for buy orders)
-          // Place automatic close order for BUY fills
-          if (
-            fill.order_type === 1 ||
-            fill.order_type === 2 ||
-            fill.order_type === 3
-          ) {
-            console.log(
-              `${getTimestamp()} - BUY order fill detected (order_type: ${
-                fill.order_type
-              }), placing close order...`
-            );
-            this.placeAutomaticCloseOrder(fill);
-          } else {
-            console.log(
-              `${getTimestamp()} - Non-BUY order fill detected (order_type: ${
-                fill.order_type
-              }), skipping... (Exit Order Bot handles EXIT fills)`
-            );
-          }
-        } else {
-          console.log(
-            `${getTimestamp()} - Skipping old fill: Trade ID ${
-              fill.trade_id
-            } (timestamp ${fillTimestamp} < bot start ${this.botStartTime})`
-          );
-        }
-      } else {
+    // Check for closed positions (positions that were in previous but not in current)
+    for (const [tradeId, previousPosition] of this.previousPositions) {
+      if (!currentPositionMap.has(tradeId)) {
+        // Position was closed!
+        console.log(`${getTimestamp()} - 🚨 POSITION CLOSED DETECTED!`);
+        console.log(`  Trade ID: ${tradeId}`);
+        console.log(`  Market ID: ${previousPosition.market_id}`);
         console.log(
-          `${getTimestamp()} - Skipping duplicate fill: Trade ID ${
-            fill.trade_id
-          }`
+          `  Position Type: ${previousPosition.is_long ? "Long" : "Short"}`
         );
+        console.log(`  Entry Price: $${previousPosition.entry_price}`);
+        console.log(`  Size: ${previousPosition.size}`);
+        console.log(`  Leverage: ${previousPosition.leverage}x`);
+        console.log(`  Last Updated: ${previousPosition.last_updated}`);
+        console.log("---");
+
+        // Place new buy order at entry price - $100
+        this.placeAutomaticBuyOrder(previousPosition);
       }
+    }
+
+    // Update previous positions with current positions
+    this.previousPositions.clear();
+    currentPositions.forEach((position) => {
+      this.previousPositions.set(position.trade_id, position);
+    });
+
+    // Log current positions
+    if (currentPositions.length > 0) {
+      console.log(`${getTimestamp()} - Current Active Positions:`);
+      currentPositions.forEach((position) => {
+        console.log(
+          `  - Trade ID: ${position.trade_id} | ${
+            position.is_long ? "Long" : "Short"
+          } | Entry: $${position.entry_price} | Size: ${
+            position.size
+          } | Leverage: ${position.leverage}x`
+        );
+      });
+    } else {
+      console.log(`${getTimestamp()} - No active positions`);
     }
   }
 
-  private async placeAutomaticCloseOrder(fill: TradeFillData): Promise<void> {
+  private async placeAutomaticBuyOrder(
+    closedPosition: PositionData
+  ): Promise<void> {
     try {
-      const fillPrice = parseFloat(fill.price);
-      const size = parseFloat(fill.size);
-      const closePrice = fillPrice + 100; // +$100 profit from fill price
+      const entryPrice = parseFloat(closedPosition.entry_price);
+      const size = parseFloat(closedPosition.size);
+      const newBuyPrice = entryPrice - 100; // $100 below entry price
 
-      console.log(`${getTimestamp()} - Placing automatic close order:`);
-      console.log(`  Fill Price: $${fillPrice}`);
-      console.log(`  Close Price: $${closePrice} (+$100 from fill price)`);
+      console.log(
+        `${getTimestamp()} - Placing automatic buy order after position closure:`
+      );
+      console.log(`  Closed Position Entry Price: $${entryPrice}`);
+      console.log(`  New Buy Price: $${newBuyPrice} (-$100 from entry price)`);
       console.log(`  Size: ${size}`);
+      console.log(`  Market ID: ${closedPosition.market_id}`);
 
-      const closeOrderParams: LimitOrderParams = {
-        marketId: fill.market_id,
-        tradeSide: true, // Long side (same as the filled order)
-        direction: true, // Close position
+      const buyOrderParams: LimitOrderParams = {
+        marketId: closedPosition.market_id,
+        tradeSide: true, // Long side
+        direction: false, // Open position
         size: size,
-        price: closePrice,
-        leverage: 10, // Default leverage
+        price: newBuyPrice,
+        leverage: closedPosition.leverage, // Use same leverage as closed position
         restriction: 0, // NO_RESTRICTION
       };
 
-      const result = await this.placeLimitOrder(closeOrderParams);
+      const result = await this.placeLimitOrder(buyOrderParams);
 
       if (result.success) {
         console.log(
-          `${getTimestamp()} - ✅ Automatic close order placed successfully!`
+          `${getTimestamp()} - ✅ Automatic buy order placed successfully!`
         );
         console.log(`  Transaction Hash: ${result.transactionHash}`);
         console.log(
-          `  Close Price: $${closePrice} (based on fill price $${fillPrice})`
+          `  New Buy Price: $${newBuyPrice} (based on closed position entry $${entryPrice})`
+        );
+        console.log(
+          `  Strategy: When this buy fills, main bot will place close order at $${
+            newBuyPrice + 100
+          }`
         );
       } else {
         console.log(
-          `${getTimestamp()} - ❌ Failed to place automatic close order:`
+          `${getTimestamp()} - ❌ Failed to place automatic buy order:`
         );
         console.log(`  Error: ${result.error}`);
       }
     } catch (error) {
       console.error(
-        `${getTimestamp()} - Error placing automatic close order:`,
+        `${getTimestamp()} - Error placing automatic buy order:`,
         error
       );
     }
@@ -483,10 +460,10 @@ class WebSocketTradingBot {
     try {
       await this.initialize();
       console.log(
-        `${getTimestamp()} - 🚀 WebSocket Trading Bot started successfully!`
+        `${getTimestamp()} - 🚀 Position-Based Exit Bot started successfully!`
       );
       console.log(
-        `${getTimestamp()} - Monitoring order fills and will automatically place close orders at +$100...`
+        `${getTimestamp()} - Monitoring position closures and will automatically place new buy orders at -$100...`
       );
     } catch (error) {
       console.error(`${getTimestamp()} - Failed to start bot:`, error);
@@ -495,7 +472,7 @@ class WebSocketTradingBot {
   }
 
   public stop(): void {
-    console.log(`${getTimestamp()} - Stopping WebSocket Trading Bot...`);
+    console.log(`${getTimestamp()} - Stopping Position-Based Exit Bot...`);
 
     this.stopPingInterval();
 
@@ -509,21 +486,20 @@ class WebSocketTradingBot {
   }
 }
 
-async function startWebSocketTradingBot(): Promise<void> {
+async function startPositionBasedExitBot(): Promise<void> {
   try {
     validateConfig();
 
     console.log("=".repeat(60));
-    console.log("BUY ORDER BOT");
+    console.log("POSITION-BASED EXIT BOT");
     console.log("=".repeat(60));
-    console.log(`${getTimestamp()} - Starting Buy Order Bot...`);
+    console.log(`${getTimestamp()} - Starting Position-Based Exit Bot...`);
     console.log(
-      "Monitoring BUY order fills and placing close orders at +$100..."
+      "Monitoring position closures and placing new buy orders at -$100..."
     );
-    console.log("(Exit Order Bot handles EXIT fills separately)");
     console.log("=".repeat(60));
 
-    const bot = new WebSocketTradingBot();
+    const bot = new PositionBasedExitBot();
 
     // Handle graceful shutdown
     process.on("SIGINT", () => {
@@ -548,13 +524,13 @@ async function startWebSocketTradingBot(): Promise<void> {
     console.log(`${getTimestamp()} - Bot is running. Press Ctrl+C to stop.`);
     console.log("=".repeat(60));
   } catch (error) {
-    console.error("Failed to start WebSocket Trading Bot:", error);
+    console.error("Failed to start Position-Based Exit Bot:", error);
     process.exit(1);
   }
 }
 
 if (require.main === module) {
-  startWebSocketTradingBot();
+  startPositionBasedExitBot();
 }
 
-export { WebSocketTradingBot };
+export { PositionBasedExitBot };
