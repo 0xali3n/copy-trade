@@ -140,45 +140,139 @@ async function testSingleLimitOrders(): Promise<void> {
     validateConfig();
     const placer = new SingleLimitOrderPlacer();
 
-    console.log("SINGLE LIMIT ORDERS - Starting...");
-    console.log("Market ID: 15 | Leverage: 10x | Size: 0.0001 BTC");
+    console.log("MULTIPLE LIMIT ORDERS - Starting...");
+    console.log("Market ID: 15 | Leverage: 10x | Size: 0.0001 BTC each");
     console.log("=".repeat(80));
 
-    const buyPrice = 115600;
+    // Define multiple buy prices
+    const buyPrices = [116000, 115900, 115800, 115700, 115600];
+    const orderResults: Array<{
+      buyPrice: number;
+      sellPrice: number;
+      buyResult: OrderResult | null;
+      sellResult: OrderResult | null;
+    }> = [];
 
-    // Place BUY order (open long position)
-    console.log("\n📈 Placing BUY order...");
-    const buyResult = await placer.placeLimitOrder({
-      marketId: "15",
-      tradeSide: true, // Long side
-      direction: false, // Open position
-      size: 0.00012, // 0.00012 BTC
-      price: buyPrice, // $115,600
-      leverage: 10, // 10x leverage
-      restriction: 0, // NO_RESTRICTION
-    });
+    // Place multiple BUY orders at different prices
+    for (let i = 0; i < buyPrices.length; i++) {
+      const buyPrice = buyPrices[i];
+      const sellPrice = buyPrice + 100;
 
-    // Display result
-    console.log("\n" + "=".repeat(80));
-    console.log("SINGLE LIMIT ORDERS RESULT");
-    console.log("=".repeat(80));
+      console.log(`\n📈 STEP ${i + 1}: Placing BUY order at $${buyPrice}...`);
 
-    if (buyResult.success) {
-      console.log("BUY Order: ✅ SUCCESS");
-      console.log(`  - BTC Long at $${buyPrice} (10x) | Open Position`);
-      console.log(`  - Transaction: ${buyResult.transactionHash}`);
-      console.log("\n🎯 Order Placed:");
-      console.log(
-        `  - If price hits $${buyPrice} → BUY order fills (opens long)`
-      );
-      console.log(
-        "  - WebSocket bot will automatically place close order at +$100"
-      );
-    } else {
-      console.log("BUY Order: ❌ FAILED");
-      console.log(`  - Error: ${buyResult.error}`);
+      const buyResult = await placer.placeLimitOrder({
+        marketId: "15",
+        tradeSide: true, // Long side
+        direction: false, // Open position
+        size: 0.0001, // 0.0001 BTC
+        price: buyPrice,
+        leverage: 10, // 10x leverage
+        restriction: 0, // NO_RESTRICTION
+      });
+
+      let sellResult: OrderResult | null = null;
+
+      if (buyResult.success) {
+        console.log(`✅ BUY order at $${buyPrice} placed successfully!`);
+        console.log(`   Transaction Hash: ${buyResult.transactionHash}`);
+        console.log(
+          `   Price: $${buyPrice} | Size: 0.0001 BTC | Leverage: 10x`
+        );
+
+        // Wait a moment before placing sell order
+        console.log(`⏳ Waiting 3 seconds before placing SELL order...`);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        // Place corresponding SELL order
+        console.log(`📉 Placing SELL order at $${sellPrice}...`);
+        sellResult = await placer.placeLimitOrder({
+          marketId: "15",
+          tradeSide: true, // Long side (same as buy)
+          direction: true, // Close position
+          size: 0.0001, // Same size as buy order
+          price: sellPrice,
+          leverage: 10, // Same leverage
+          restriction: 0, // NO_RESTRICTION
+        });
+
+        if (sellResult.success) {
+          console.log(`✅ SELL order at $${sellPrice} placed successfully!`);
+          console.log(`   Transaction Hash: ${sellResult.transactionHash}`);
+          console.log(
+            `   Price: $${sellPrice} | Size: 0.0001 BTC | Leverage: 10x`
+          );
+          console.log(`   Profit Target: +$100`);
+        } else {
+          console.log(`❌ SELL order at $${sellPrice} failed:`);
+          console.log(`   Error: ${sellResult.error}`);
+        }
+
+        orderResults.push({
+          buyPrice,
+          sellPrice,
+          buyResult,
+          sellResult,
+        });
+
+        // Wait between orders
+        if (i < buyPrices.length - 1) {
+          console.log(`⏳ Waiting 3 seconds before next order...`);
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        }
+      } else {
+        console.log(`❌ BUY order at $${buyPrice} failed:`);
+        console.log(`   Error: ${buyResult.error}`);
+        orderResults.push({
+          buyPrice,
+          sellPrice,
+          buyResult: null,
+          sellResult: null,
+        });
+      }
     }
 
+    // Display final results
+    console.log("\n" + "=".repeat(80));
+    console.log("MULTIPLE LIMIT ORDERS RESULT");
+    console.log("=".repeat(80));
+
+    let successCount = 0;
+    for (let i = 0; i < orderResults.length; i++) {
+      const { buyPrice, sellPrice, buyResult, sellResult } = orderResults[i];
+
+      if (buyResult && buyResult.success) {
+        successCount++;
+        console.log(`Order ${i + 1}: ✅ SUCCESS`);
+        console.log(`  - BUY: BTC Long at $${buyPrice} (10x) | Open Position`);
+        console.log(
+          `  - SELL: BTC Close Long at $${sellPrice} (10x) | Close Position (+$100)`
+        );
+        console.log(`  - BUY Transaction: ${buyResult.transactionHash}`);
+        if (sellResult && sellResult.success) {
+          console.log(`  - SELL Transaction: ${sellResult.transactionHash}`);
+        }
+        console.log(
+          `  - Strategy: If price hits $${buyPrice} → BUY fills, then if price hits $${sellPrice} → SELL fills (+$100 profit)`
+        );
+      } else {
+        console.log(`Order ${i + 1}: ❌ FAILED`);
+        console.log(`  - BUY at $${buyPrice} failed`);
+        if (buyResult) {
+          console.log(`  - Error: ${buyResult.error}`);
+        }
+      }
+      console.log("");
+    }
+
+    console.log("=".repeat(80));
+    console.log(
+      `SUMMARY: ${successCount}/${buyPrices.length} order pairs placed successfully`
+    );
+    console.log("=".repeat(80));
+    console.log("🎯 STRATEGY COMPLETE:");
+    console.log("  - Multiple buy orders at different price levels");
+    console.log("  - Each buy order has a corresponding sell order at +$100");
+    console.log("  - WebSocket bot will also monitor for any additional fills");
     console.log("=".repeat(80));
   } catch (error) {
     console.error("Test failed:", error);

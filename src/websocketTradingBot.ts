@@ -11,24 +11,21 @@ import axios from "axios";
 import WebSocket from "ws";
 import { config, validateConfig, getTimestamp } from "./config";
 
-interface OrderHistoryData {
+interface TradeFillData {
   address: string;
-  is_market_order: boolean;
+  fee: string;
   last_updated: string;
-  leverage: number;
   market_id: string;
-  order_id: string;
   order_type: number;
-  order_value: string;
+  pnl: string;
   price: string;
   size: string;
-  status: string;
   timestamp: string;
   trade_id: string;
 }
 
-interface OrderHistoryUpdate {
-  data: OrderHistoryData[];
+interface TradeHistoryUpdate {
+  data: TradeFillData[];
   message: string;
 }
 
@@ -60,9 +57,8 @@ class WebSocketTradingBot {
   private maxReconnectAttempts: number = 10;
   private reconnectDelay: number = 5000; // 5 seconds
   private pingInterval: NodeJS.Timeout | null = null;
-  private trackedOrders: Set<string> = new Set(); // Track order_ids to avoid duplicate processing
-  private botStartTime: number = 0; // Track when bot started to filter old orders
-  private originalOrderPrices: Map<string, number> = new Map(); // Store original order prices by order_id
+  private trackedFills: Set<string> = new Set(); // Track trade_ids to avoid duplicate processing
+  private botStartTime: number = 0; // Track when bot started to filter old fills
 
   constructor() {
     const aptosConfig = new AptosConfig({ network: Network.MAINNET });
@@ -145,9 +141,8 @@ class WebSocketTradingBot {
           this.isConnected = true;
           this.reconnectAttempts = 0;
 
-          // Subscribe to both open orders and order history
-          this.subscribeToOpenOrders();
-          this.subscribeToOrderHistory();
+          // Subscribe to trade history (order fills)
+          this.subscribeToTradeHistory();
 
           // Start ping interval
           this.startPingInterval();
@@ -190,7 +185,7 @@ class WebSocketTradingBot {
     });
   }
 
-  private subscribeToOpenOrders(): void {
+  private subscribeToTradeHistory(): void {
     if (!this.ws || !this.profileAddress) {
       console.error(
         `${getTimestamp()} - Cannot subscribe: WebSocket or profile address not available`
@@ -199,34 +194,13 @@ class WebSocketTradingBot {
     }
 
     const subscriptionMessage = {
-      topic: "open_orders",
+      topic: "trade_history",
       address: this.profileAddress,
     };
 
     this.ws.send(JSON.stringify(subscriptionMessage));
     console.log(
-      `${getTimestamp()} - Subscribed to open orders for address: ${
-        this.profileAddress
-      }`
-    );
-  }
-
-  private subscribeToOrderHistory(): void {
-    if (!this.ws || !this.profileAddress) {
-      console.error(
-        `${getTimestamp()} - Cannot subscribe: WebSocket or profile address not available`
-      );
-      return;
-    }
-
-    const subscriptionMessage = {
-      topic: "order_history",
-      address: this.profileAddress,
-    };
-
-    this.ws.send(JSON.stringify(subscriptionMessage));
-    console.log(
-      `${getTimestamp()} - Subscribed to order history for address: ${
+      `${getTimestamp()} - Subscribed to trade history (order fills) for address: ${
         this.profileAddress
       }`
     );
@@ -236,10 +210,8 @@ class WebSocketTradingBot {
     try {
       const data: any = JSON.parse(message);
 
-      if (data.message === "order_history" && data.data) {
-        this.processOrderHistory(data.data);
-      } else if (data.message === "open_orders" && data.data) {
-        this.processOpenOrders(data.data);
+      if (data.message === "trade_history" && data.data) {
+        this.processTradeFills(data.data);
       }
     } catch (error) {
       console.error(
@@ -249,86 +221,99 @@ class WebSocketTradingBot {
     }
   }
 
-  private processOpenOrders(orders: any[]): void {
-    for (const order of orders) {
-      // Store original order price when order is first placed
-      const orderTimestamp = parseInt(order.timestamp);
-      if (orderTimestamp >= this.botStartTime) {
-        this.originalOrderPrices.set(order.order_id, parseFloat(order.price));
+  private processTradeFills(fills: TradeFillData[]): void {
+    console.log(
+      `${getTimestamp()} - Processing ${fills.length} trade fills...`
+    );
+
+    for (const fill of fills) {
+      const fillTimestamp = parseInt(fill.timestamp);
+      const isNewFill = !this.trackedFills.has(fill.trade_id);
+      const isAfterBotStart = fillTimestamp >= this.botStartTime;
+
+      console.log(
+        `${getTimestamp()} - Fill analysis: Trade ID ${
+          fill.trade_id
+        }, Order Type ${
+          fill.order_type
+        }, New: ${isNewFill}, After Start: ${isAfterBotStart}, Timestamp: ${fillTimestamp}, Bot Start: ${
+          this.botStartTime
+        }`
+      );
+
+      // Check if this is a new fill we haven't processed yet
+      if (isNewFill) {
+        // Only show fills that happened after bot started
+        if (isAfterBotStart) {
+          this.trackedFills.add(fill.trade_id);
+
+          // Display fill information
+          console.log(`${getTimestamp()} - Order Fill Detected:`);
+          console.log(`  Trade ID: ${fill.trade_id}`);
+          console.log(`  Market ID: ${fill.market_id}`);
+          console.log(`  Order Type: ${fill.order_type}`);
+          console.log(`  Fill Price: $${fill.price}`);
+          console.log(`  Size: ${fill.size}`);
+          console.log(`  Fee: ${fill.fee}`);
+          console.log(`  PnL: ${fill.pnl}`);
+          console.log(`  Timestamp: ${fill.timestamp}`);
+          console.log("---");
+
+          // Check if this is a BUY order fill (order_type 1, 2, or 3 for buy orders)
+          // Place automatic close order for BUY fills
+          if (
+            fill.order_type === 1 ||
+            fill.order_type === 2 ||
+            fill.order_type === 3
+          ) {
+            console.log(
+              `${getTimestamp()} - BUY order fill detected (order_type: ${
+                fill.order_type
+              }), placing close order...`
+            );
+            this.placeAutomaticCloseOrder(fill);
+          } else {
+            console.log(
+              `${getTimestamp()} - Non-BUY order fill detected (order_type: ${
+                fill.order_type
+              }), skipping...`
+            );
+          }
+        } else {
+          console.log(
+            `${getTimestamp()} - Skipping old fill: Trade ID ${
+              fill.trade_id
+            } (timestamp ${fillTimestamp} < bot start ${this.botStartTime})`
+          );
+        }
+      } else {
         console.log(
-          `${getTimestamp()} - Stored original order price: Order ID ${
-            order.order_id
-          } at $${order.price}`
+          `${getTimestamp()} - Skipping duplicate fill: Trade ID ${
+            fill.trade_id
+          }`
         );
       }
     }
   }
 
-  private processOrderHistory(orders: OrderHistoryData[]): void {
-    for (const order of orders) {
-      // Check if this is a new order we haven't processed yet
-      if (!this.trackedOrders.has(order.order_id)) {
-        // Only show orders that happened after bot started
-        const orderTimestamp = parseInt(order.timestamp);
-        if (orderTimestamp >= this.botStartTime) {
-          this.trackedOrders.add(order.order_id);
-
-          // Display order information
-          console.log(`${getTimestamp()} - Order Update:`);
-          console.log(`  Order ID: ${order.order_id}`);
-          console.log(`  Trade ID: ${order.trade_id}`);
-          console.log(`  Market ID: ${order.market_id}`);
-          console.log(`  Status: ${order.status}`);
-          console.log(`  Order Price: $${order.price}`);
-          console.log(`  Size: ${order.size}`);
-          console.log(`  Leverage: ${order.leverage}x`);
-          console.log(`  Order Type: ${order.order_type}`);
-          console.log(`  Is Market Order: ${order.is_market_order}`);
-          console.log(`  Timestamp: ${order.timestamp}`);
-          console.log("---");
-
-          // Check if this is a BUY order that got FILLED (order_type 1 or 2 typically for market/limit buy)
-          // Place automatic close order for BUY fills using the ORIGINAL order price
-          if (
-            (order.order_type === 1 || order.order_type === 2) &&
-            order.status === "Filled"
-          ) {
-            this.placeAutomaticCloseOrder(order);
-          }
-        }
-      }
-    }
-  }
-
-  private async placeAutomaticCloseOrder(
-    order: OrderHistoryData
-  ): Promise<void> {
+  private async placeAutomaticCloseOrder(fill: TradeFillData): Promise<void> {
     try {
-      // Try to get the original order price from our stored data
-      const storedOriginalPrice = this.originalOrderPrices.get(order.order_id);
-      const originalOrderPrice = storedOriginalPrice || parseFloat(order.price);
-      const size = parseFloat(order.size);
-      const leverage = order.leverage;
-      const closePrice = originalOrderPrice + 100; // +$100 profit from ORIGINAL order price
+      const fillPrice = parseFloat(fill.price);
+      const size = parseFloat(fill.size);
+      const closePrice = fillPrice + 100; // +$100 profit from fill price
 
       console.log(`${getTimestamp()} - Placing automatic close order:`);
-      console.log(
-        `  Original Order Price: $${originalOrderPrice} ${
-          storedOriginalPrice ? "(from stored data)" : "(from order history)"
-        }`
-      );
-      console.log(`  Executed Price: $${order.price}`);
-      console.log(`  Close Price: $${closePrice} (+$100 from original)`);
+      console.log(`  Fill Price: $${fillPrice}`);
+      console.log(`  Close Price: $${closePrice} (+$100 from fill price)`);
       console.log(`  Size: ${size}`);
-      console.log(`  Leverage: ${leverage}x`);
 
       const closeOrderParams: LimitOrderParams = {
-        marketId: order.market_id,
+        marketId: fill.market_id,
         tradeSide: true, // Long side (same as the filled order)
         direction: true, // Close position
         size: size,
         price: closePrice,
-        leverage: leverage, // Use same leverage as original order
+        leverage: 10, // Default leverage
         restriction: 0, // NO_RESTRICTION
       };
 
@@ -340,7 +325,7 @@ class WebSocketTradingBot {
         );
         console.log(`  Transaction Hash: ${result.transactionHash}`);
         console.log(
-          `  Close Price: $${closePrice} (based on original order price $${originalOrderPrice})`
+          `  Close Price: $${closePrice} (based on fill price $${fillPrice})`
         );
       } else {
         console.log(
@@ -510,7 +495,9 @@ async function startWebSocketTradingBot(): Promise<void> {
     console.log("WEBSOCKET ORDER FILLS TRACKER");
     console.log("=".repeat(60));
     console.log(`${getTimestamp()} - Starting WebSocket Bot...`);
-    console.log("Monitoring order fills in real-time...");
+    console.log(
+      "Monitoring order fills and placing automatic close orders at +$100..."
+    );
     console.log("=".repeat(60));
 
     const bot = new WebSocketTradingBot();
