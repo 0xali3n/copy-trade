@@ -17,7 +17,8 @@
     "close-position": "ts-node src/closePosition.ts",
     "websocket-bot": "ts-node src/websocketTradingBot.ts",
     "exit-bot": "ts-node src/exitOrderBot.ts",
-    "position-bot": "ts-node src/positionBasedExitBot.ts"
+    "position-bot": "ts-node src/positionBasedExitBot.ts",
+    "unified-bot": "ts-node src/unifiedTradingBot.ts"
   },
   "keywords": [
     "kana",
