@@ -6,10 +6,9 @@ dotenv.config();
 export const config = {
   // Kana Labs API Configuration
   kanaApiKey: process.env.KANA_API_KEY || "",
-  kanaRestUrl: process.env.KANA_REST || "https://perps-tradeapi.kanalabs.io",
+  kanaRestUrl: process.env.KANA_REST || "https://perps-tradeapi.kana.trade",
   kanaWsUrl:
-    process.env.KANA_WS ||
-    "wss://perpetuals-indexer-ws-develop.kanalabs.io/ws/",
+    process.env.KANA_WS || "wss://perpetuals-indexer-ws.kana.trade/ws/",
 
   // Aptos Configuration
   aptosPrivateKeyHex: process.env.APTOS_PRIVATE_KEY_HEX || "",

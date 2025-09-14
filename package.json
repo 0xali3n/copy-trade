@@ -8,7 +8,13 @@
     "dev": "ts-node",
     "get-profile": "ts-node src/getProfile.ts",
     "deposit-and-balance": "ts-node src/depositAndBalance.ts",
-    "place-limit-order": "ts-node src/placeLimitOrder.ts"
+    "place-limit-order": "ts-node src/placeLimitOrder.ts",
+    "place-multiple-orders": "ts-node src/placeMultipleOrders.ts",
+    "simple-grid": "ts-node src/simpleGridOrder.ts",
+    "single-limit": "ts-node src/singleLimitOrders.ts",
+    "grid-bot": "ts-node src/gridTradingBot.ts",
+    "monitor-positions": "ts-node src/monitorPositions.ts",
+    "close-position": "ts-node src/closePosition.ts"
   },
   "keywords": [
     "kana",
