@@ -146,18 +146,22 @@ async function testMultipleBtcOrders(): Promise<void> {
     const placer = new MultipleOrderPlacer();
 
     console.log("BTC Multiple Orders - Starting...");
-    console.log("Market ID: 15 | Leverage: 10x | Size: 0.0001 BTC each");
+    console.log(
+      "Market ID: 15 | Leverage: 10x | Size: 0.0001 BTC each | 5 Orders"
+    );
     console.log("=".repeat(80));
 
     const result = await placer.placeMultipleOrders({
       marketId: "15",
-      orderTypes: [true, true, true, true], // All limit orders
-      tradeSides: [true, true, true, true], // All long positions
-      directions: [false, false, false, false], // All open positions
-      sizes: [0.0001, 0.0001, 0.0001, 0.0001], // 0.0001 BTC each
-      prices: [115300, 115400, 115500, 115600], // Your specified prices
-      leverages: [10, 10, 10, 10], // 10x leverage for all
-      restrictions: [0, 0, 0, 0], // NO_RESTRICTION for all
+      orderTypes: [true, true, true, true, true], // All limit orders
+      tradeSides: [true, true, true, true, true], // All long positions
+      directions: [false, false, false, false, false], // All open positions
+      sizes: [0.0001, 0.0001, 0.0001, 0.0001, 0.0001], // 0.0001 BTC each
+      prices: [115300, 115400, 115500, 115600, 115700], // 5 different prices
+      leverages: [10, 10, 10, 10, 10], // 10x leverage for all
+      restrictions: [0, 0, 0, 0, 0], // NO_RESTRICTION for all
+      takeProfits: [115400, 115500, 115600, 115700, 115800], // Take profit levels
+      stopLosses: [114500, 114600, 114700, 114800, 114900], // Stop loss levels
     });
 
     // Display result
@@ -169,10 +173,21 @@ async function testMultipleBtcOrders(): Promise<void> {
       console.log("Status: SUCCESS");
       console.log(`Transaction Hash: ${result.transactionHash}`);
       console.log("Orders Placed:");
-      console.log("  - Order 1: BTC Long at $115,300 (10x leverage)");
-      console.log("  - Order 2: BTC Long at $115,400 (10x leverage)");
-      console.log("  - Order 3: BTC Long at $115,500 (10x leverage)");
-      console.log("  - Order 4: BTC Long at $115,600 (10x leverage)");
+      console.log(
+        "  - Order 1: BTC Long at $115,300 (10x) | TP: $116,000 | SL: $114,500"
+      );
+      console.log(
+        "  - Order 2: BTC Long at $115,400 (10x) | TP: $116,100 | SL: $114,600"
+      );
+      console.log(
+        "  - Order 3: BTC Long at $115,500 (10x) | TP: $116,200 | SL: $114,700"
+      );
+      console.log(
+        "  - Order 4: BTC Long at $115,600 (10x) | TP: $116,300 | SL: $114,800"
+      );
+      console.log(
+        "  - Order 5: BTC Long at $115,700 (10x) | TP: $116,400 | SL: $114,900"
+      );
     } else {
       console.log("Status: FAILED");
       console.log(`Error: ${result.error}`);
