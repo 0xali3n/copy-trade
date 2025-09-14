@@ -141,63 +141,24 @@ async function testSingleLimitOrders(): Promise<void> {
     const placer = new SingleLimitOrderPlacer();
 
     console.log("SINGLE LIMIT ORDERS - Starting...");
-    console.log("Market ID: 15 | Leverage: 10x | Size: 0.0001 BTC each");
+    console.log("Market ID: 15 | Leverage: 10x | Size: 0.0001 BTC");
     console.log("=".repeat(80));
 
     const buyPrice = 115600;
-    const sellPrice = buyPrice + 100; // $115,500
 
-    // Step 1: Place BUY order (open long position)
-    console.log("\n📈 STEP 1: Placing BUY order...");
+    // Place BUY order (open long position)
+    console.log("\n📈 Placing BUY order...");
     const buyResult = await placer.placeLimitOrder({
       marketId: "15",
       tradeSide: true, // Long side
       direction: false, // Open position
-      size: 0.00012, // 0.0001 BTC
-      price: buyPrice, // $115,400
+      size: 0.00012, // 0.00012 BTC
+      price: buyPrice, // $115,600
       leverage: 10, // 10x leverage
       restriction: 0, // NO_RESTRICTION
     });
 
-    let sellResult: OrderResult | null = null;
-
-    if (buyResult.success) {
-      console.log("✅ BUY order placed successfully!");
-      console.log(`   Transaction Hash: ${buyResult.transactionHash}`);
-      console.log(`   Price: $${buyPrice} | Size: 0.0001 BTC | Leverage: 10x`);
-
-      // Wait a moment before placing sell order
-      console.log("\n⏳ Waiting 3 seconds before placing SELL order...");
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-
-      // Step 2: Place SELL order (close long position)
-      console.log("\n📉 STEP 2: Placing SELL order...");
-      sellResult = await placer.placeLimitOrder({
-        marketId: "15",
-        tradeSide: true, // Short side to close long position
-        direction: true, // Close position
-        size: 0.0001, // Same size as buy order
-        price: sellPrice, // $115,500
-        leverage: 10, // Same leverage
-        restriction: 0, // NO_RESTRICTION
-      });
-
-      if (sellResult.success) {
-        console.log("✅ SELL order placed successfully!");
-        console.log(`   Transaction Hash: ${sellResult.transactionHash}`);
-        console.log(
-          `   Price: $${sellPrice} | Size: 0.0001 BTC | Leverage: 10x`
-        );
-      } else {
-        console.log("❌ SELL order failed:");
-        console.log(`   Error: ${sellResult.error}`);
-      }
-    } else {
-      console.log("❌ BUY order failed:");
-      console.log(`   Error: ${buyResult.error}`);
-    }
-
-    // Display final result
+    // Display result
     console.log("\n" + "=".repeat(80));
     console.log("SINGLE LIMIT ORDERS RESULT");
     console.log("=".repeat(80));
@@ -206,24 +167,13 @@ async function testSingleLimitOrders(): Promise<void> {
       console.log("BUY Order: ✅ SUCCESS");
       console.log(`  - BTC Long at $${buyPrice} (10x) | Open Position`);
       console.log(`  - Transaction: ${buyResult.transactionHash}`);
-
-      if (sellResult && sellResult.success) {
-        console.log("\nSELL Order: ✅ SUCCESS");
-        console.log(
-          `  - BTC Close Long at $${sellPrice} (10x) | Close Position (+$100)`
-        );
-        console.log(`  - Transaction: ${sellResult.transactionHash}`);
-        console.log("\n🎯 Strategy Complete:");
-        console.log(
-          `  - If price hits $${buyPrice} → BUY order fills (opens long)`
-        );
-        console.log(
-          `  - If price hits $${sellPrice} → SELL order fills (closes long +$100 profit)`
-        );
-      } else {
-        console.log("\nSELL Order: ❌ FAILED");
-        console.log(`  - Error: ${sellResult?.error || "Not attempted"}`);
-      }
+      console.log("\n🎯 Order Placed:");
+      console.log(
+        `  - If price hits $${buyPrice} → BUY order fills (opens long)`
+      );
+      console.log(
+        "  - WebSocket bot will automatically place close order at +$100"
+      );
     } else {
       console.log("BUY Order: ❌ FAILED");
       console.log(`  - Error: ${buyResult.error}`);

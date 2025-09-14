@@ -14,7 +14,8 @@
     "single-limit": "ts-node src/singleLimitOrders.ts",
     "grid-bot": "ts-node src/gridTradingBot.ts",
     "monitor-positions": "ts-node src/monitorPositions.ts",
-    "close-position": "ts-node src/closePosition.ts"
+    "close-position": "ts-node src/closePosition.ts",
+    "websocket-bot": "ts-node src/websocketTradingBot.ts"
   },
   "keywords": [
     "kana",
