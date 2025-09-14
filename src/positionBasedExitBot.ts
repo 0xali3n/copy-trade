@@ -11,6 +11,30 @@ import axios from "axios";
 import WebSocket from "ws";
 import { config, validateConfig, getTimestamp } from "./config";
 
+// ===== GRID TRADING CONFIGURATION =====
+interface GridConfig {
+  marketId: number;
+  upperBound: number; // Highest price for grid
+  lowerBound: number; // Lowest price for grid
+  gridCount: number; // Number of grid levels
+  gridSpacing: number; // Price spacing between grids
+  orderSize: number; // Size per order (in BTC)
+  leverage: number; // Leverage for all orders
+  profitTarget: number; // Profit target per grid (+$100)
+}
+
+// Default Grid Configuration - BTC/USD
+const DEFAULT_GRID_CONFIG: GridConfig = {
+  marketId: 15, // BTC-USD market
+  upperBound: 120000, // $120,000 - Upper grid bound
+  lowerBound: 110000, // $110,000 - Lower grid bound
+  gridCount: 10, // 10 grid levels
+  gridSpacing: 1000, // $1,000 spacing between grids
+  orderSize: 0.0001, // 0.0001 BTC per order
+  leverage: 10, // 10x leverage
+  profitTarget: 100, // $100 profit per grid
+};
+
 interface PositionData {
   address: string;
   entry_price: string;
@@ -62,8 +86,9 @@ class PositionBasedExitBot {
   private pingInterval: NodeJS.Timeout | null = null;
   private previousPositions: Map<string, PositionData> = new Map(); // Track previous positions
   private botStartTime: number = 0; // Track when bot started
+  private gridConfig: GridConfig; // Grid trading configuration
 
-  constructor() {
+  constructor(gridConfig?: GridConfig) {
     const aptosConfig = new AptosConfig({ network: Network.MAINNET });
     this.aptos = new Aptos(aptosConfig);
 
@@ -74,6 +99,9 @@ class PositionBasedExitBot {
     this.account = Account.fromPrivateKey({
       privateKey: new Ed25519PrivateKey(formattedPrivateKey),
     });
+
+    // Use provided grid config or default
+    this.gridConfig = gridConfig || DEFAULT_GRID_CONFIG;
   }
 
   async initialize(): Promise<void> {
@@ -291,23 +319,30 @@ class PositionBasedExitBot {
     try {
       const entryPrice = parseFloat(closedPosition.entry_price);
       const size = parseFloat(closedPosition.size);
-      const newBuyPrice = entryPrice - 100; // $100 below entry price
+      const newBuyPrice = entryPrice - this.gridConfig.profitTarget; // Use grid profit target
 
       console.log(
-        `${getTimestamp()} - Placing automatic buy order after position closure:`
+        `${getTimestamp()} - 🎯 Placing automatic buy order after position closure:`
       );
       console.log(`  Closed Position Entry Price: $${entryPrice}`);
-      console.log(`  New Buy Price: $${newBuyPrice} (-$100 from entry price)`);
-      console.log(`  Size: ${size}`);
-      console.log(`  Market ID: ${closedPosition.market_id}`);
+      console.log(
+        `  New Buy Price: $${newBuyPrice} (-$${this.gridConfig.profitTarget} from entry price)`
+      );
+      console.log(
+        `  Size: ${this.gridConfig.orderSize} BTC (using grid config)`
+      );
+      console.log(`  Market ID: ${this.gridConfig.marketId}`);
+      console.log(
+        `  Leverage: ${this.gridConfig.leverage}x (using grid config)`
+      );
 
       const buyOrderParams: LimitOrderParams = {
-        marketId: closedPosition.market_id,
+        marketId: this.gridConfig.marketId.toString(),
         tradeSide: true, // Long side
         direction: false, // Open position
-        size: size,
+        size: this.gridConfig.orderSize, // Use grid order size
         price: newBuyPrice,
-        leverage: closedPosition.leverage, // Use same leverage as closed position
+        leverage: this.gridConfig.leverage, // Use grid leverage
         restriction: 0, // NO_RESTRICTION
       };
 
@@ -323,8 +358,11 @@ class PositionBasedExitBot {
         );
         console.log(
           `  Strategy: When this buy fills, main bot will place close order at $${
-            newBuyPrice + 100
+            newBuyPrice + this.gridConfig.profitTarget
           }`
+        );
+        console.log(
+          `  Grid Level: Part of ${this.gridConfig.gridCount}-level grid strategy`
         );
       } else {
         console.log(
@@ -456,14 +494,56 @@ class PositionBasedExitBot {
     }, delay);
   }
 
+  // ===== DISPLAY GRID CONFIGURATION =====
+  private displayGridConfiguration(): void {
+    console.log("=".repeat(80));
+    console.log("🎯 GRID TRADING BOT CONFIGURATION");
+    console.log("=".repeat(80));
+    console.log(`📊 Market: BTC-USD (ID: ${this.gridConfig.marketId})`);
+    console.log(
+      `💰 Price Range: $${this.gridConfig.lowerBound.toLocaleString()} - $${this.gridConfig.upperBound.toLocaleString()}`
+    );
+    console.log(`📈 Grid Levels: ${this.gridConfig.gridCount} levels`);
+    console.log(
+      `📏 Grid Spacing: $${this.gridConfig.gridSpacing.toLocaleString()}`
+    );
+    console.log(`💎 Order Size: ${this.gridConfig.orderSize} BTC per order`);
+    console.log(`⚡ Leverage: ${this.gridConfig.leverage}x`);
+    console.log(`🎯 Profit Target: +$${this.gridConfig.profitTarget} per grid`);
+    console.log(
+      `💵 Total Investment: $${(
+        this.gridConfig.gridCount *
+        this.gridConfig.orderSize *
+        this.gridConfig.lowerBound
+      ).toLocaleString()}`
+    );
+    console.log(
+      `📊 Max Profit Potential: $${(
+        this.gridConfig.gridCount * this.gridConfig.profitTarget
+      ).toLocaleString()}`
+    );
+    console.log("=".repeat(80));
+  }
+
   public async start(): Promise<void> {
     try {
       await this.initialize();
+
+      // Display grid configuration
+      this.displayGridConfiguration();
+
       console.log(
         `${getTimestamp()} - 🚀 Position-Based Exit Bot started successfully!`
       );
       console.log(
-        `${getTimestamp()} - Monitoring position closures and will automatically place new buy orders at -$100...`
+        `${getTimestamp()} - Monitoring position closures and will automatically place new buy orders at -$${
+          this.gridConfig.profitTarget
+        }...`
+      );
+      console.log(
+        `${getTimestamp()} - Grid Strategy: ${
+          this.gridConfig.gridCount
+        } levels with $${this.gridConfig.gridSpacing} spacing`
       );
     } catch (error) {
       console.error(`${getTimestamp()} - Failed to start bot:`, error);
@@ -490,14 +570,15 @@ async function startPositionBasedExitBot(): Promise<void> {
   try {
     validateConfig();
 
-    console.log("=".repeat(60));
-    console.log("POSITION-BASED EXIT BOT");
-    console.log("=".repeat(60));
-    console.log(`${getTimestamp()} - Starting Position-Based Exit Bot...`);
+    console.log("=".repeat(80));
+    console.log("🎯 POSITION-BASED GRID EXIT BOT");
+    console.log("=".repeat(80));
+    console.log(`${getTimestamp()} - Starting Position-Based Grid Exit Bot...`);
     console.log(
-      "Monitoring position closures and placing new buy orders at -$100..."
+      "🔄 Monitoring position closures and placing new buy orders..."
     );
-    console.log("=".repeat(60));
+    console.log("📊 Using configurable grid trading parameters");
+    console.log("=".repeat(80));
 
     const bot = new PositionBasedExitBot();
 

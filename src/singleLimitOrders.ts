@@ -10,6 +10,50 @@ import {
 import axios from "axios";
 import { config, validateConfig, getTimestamp } from "./config";
 
+// ===== GRID TRADING CONFIGURATION =====
+interface UserGridInputs {
+  marketId: number;
+  upperBound: number; // Highest price for grid
+  lowerBound: number; // Lowest price for grid
+  gridCount: number; // Number of grid levels
+  orderSize: number; // Size per order (in BTC)
+  leverage: number; // Leverage for all orders
+}
+
+interface GridConfig extends UserGridInputs {
+  gridSpacing: number; // Auto-calculated: (upperBound - lowerBound) / (gridCount - 1)
+  profitTarget: number; // Auto-calculated: gridSpacing
+}
+
+// ===== USER CONFIGURATION =====
+// 👤 MODIFY THESE VALUES TO CUSTOMIZE YOUR GRID TRADING BOT
+// The system will automatically calculate gridSpacing and profitTarget
+const DEFAULT_USER_INPUTS: UserGridInputs = {
+  marketId: 15, // BTC-USD market (15=mainnet, 1339=testnet)
+  upperBound: 115700, // Upper grid bound (highest price)
+  lowerBound: 115300, // Lower grid bound (lowest price)
+  gridCount: 5, // Number of grid levels
+  orderSize: 0.0001, // Size per order (in BTC)
+  leverage: 10, // Leverage for all orders
+};
+
+// Function to create complete GridConfig from user inputs
+function createGridConfig(userInputs: UserGridInputs): GridConfig {
+  const gridSpacing =
+    (userInputs.upperBound - userInputs.lowerBound) /
+    (userInputs.gridCount - 1);
+  const profitTarget = gridSpacing; // Profit target equals grid spacing
+
+  return {
+    ...userInputs,
+    gridSpacing,
+    profitTarget,
+  };
+}
+
+// Default Grid Configuration (auto-calculated)
+const DEFAULT_GRID_CONFIG: GridConfig = createGridConfig(DEFAULT_USER_INPUTS);
+
 interface MultipleOrderParams {
   marketId: number;
   orderTypes: boolean[];
@@ -138,31 +182,105 @@ class MultipleOrderPlacer {
   }
 }
 
+// ===== GRID PRICE GENERATION =====
+function generateGridPrices(config: GridConfig): {
+  buyPrices: number[];
+  sellPrices: number[];
+} {
+  const buyPrices: number[] = [];
+  const sellPrices: number[] = [];
+
+  // Generate grid prices from lower bound to upper bound
+  for (let i = 0; i < config.gridCount; i++) {
+    const buyPrice = config.lowerBound + i * config.gridSpacing;
+    const sellPrice = buyPrice + config.profitTarget;
+
+    // Only add if within bounds
+    if (
+      buyPrice <= config.upperBound &&
+      sellPrice <= config.upperBound + config.profitTarget
+    ) {
+      buyPrices.push(buyPrice);
+      sellPrices.push(sellPrice);
+    }
+  }
+
+  return { buyPrices, sellPrices };
+}
+
+// ===== DISPLAY GRID CONFIGURATION =====
+function displayGridConfiguration(config: GridConfig): void {
+  console.log("=".repeat(80));
+  console.log("🎯 GRID TRADING BOT CONFIGURATION");
+  console.log("=".repeat(80));
+
+  // User Inputs Section
+  console.log("📝 USER INPUTS:");
+  console.log(`📊 Market: BTC-USD (ID: ${config.marketId})`);
+  console.log(
+    `💰 Price Range: $${config.lowerBound.toLocaleString()} - $${config.upperBound.toLocaleString()}`
+  );
+  console.log(`📈 Grid Levels: ${config.gridCount} levels`);
+  console.log(`💎 Order Size: ${config.orderSize} BTC per order`);
+  console.log(`⚡ Leverage: ${config.leverage}x`);
+
+  console.log("\n🧮 AUTO-CALCULATED VALUES:");
+  console.log(
+    `📏 Grid Spacing: $${config.gridSpacing.toLocaleString()} (calculated from price range)`
+  );
+  console.log(
+    `🎯 Profit Target: +$${config.profitTarget} per grid (equals grid spacing)`
+  );
+
+  console.log("\n💰 FINANCIAL SUMMARY:");
+  console.log(
+    `💵 Total Investment: $${(
+      config.gridCount *
+      config.orderSize *
+      config.lowerBound
+    ).toLocaleString()}`
+  );
+  console.log(
+    `📊 Max Profit Potential: $${(
+      config.gridCount * config.profitTarget
+    ).toLocaleString()}`
+  );
+  console.log("=".repeat(80));
+}
+
 async function testMultipleLimitOrders(): Promise<void> {
   try {
     validateConfig();
     const placer = new MultipleOrderPlacer();
 
-    console.log("MULTIPLE LIMIT ORDERS - Starting...");
-    console.log("Market ID: 15 | Leverage: 10x | Size: 0.0001 BTC each");
-    console.log("=".repeat(80));
+    // Use grid configuration
+    const gridConfig = DEFAULT_GRID_CONFIG;
 
-    // Define multiple buy prices
-    const buyPrices = [116000, 115900, 115800, 115700, 115600];
-    const sellPrices = buyPrices.map((price) => price + 100);
+    // Display grid configuration
+    displayGridConfiguration(gridConfig);
 
-    console.log("\n📈 STEP 1: Placing 5 BUY orders at once...");
+    // Generate grid prices
+    const { buyPrices, sellPrices } = generateGridPrices(gridConfig);
+
+    console.log(`\n🎯 Generated ${buyPrices.length} grid levels:`);
+    console.log(`📈 Buy Prices: $${buyPrices.join(", $")}`);
+    console.log(`📉 Sell Prices: $${sellPrices.join(", $")}`);
+    console.log("");
+
+    console.log(
+      `\n📈 STEP 1: Placing ${buyPrices.length} BUY orders at once...`
+    );
     console.log(`  - BUY orders at: $${buyPrices.join(", $")}`);
 
-    // Place 5 BUY orders first
+    // Place BUY orders using grid configuration
     const buyResult = await placer.placeMultipleOrders({
-      marketId: 15,
-      orderTypes: [...Array(5)].map(() => true), // All limit orders
-      tradeSides: [...Array(5)].map(() => true), // All long
-      directions: [...Array(5)].map(() => false), // All open positions
-      sizes: [...Array(5)].map(() => 0.0001), // All 0.0001 BTC
-      prices: buyPrices, // Buy prices only
-      leverages: [...Array(5)].map(() => 10), // All 10x leverage
+      marketId: gridConfig.marketId,
+      orderTypes: [...Array(buyPrices.length)].map(() => true), // All limit orders
+      tradeSides: [...Array(buyPrices.length)].map(() => true), // All long
+      directions: [...Array(buyPrices.length)].map(() => false), // All open positions
+      sizes: [...Array(buyPrices.length)].map(() => gridConfig.orderSize), // Grid order size
+      prices: buyPrices, // Generated buy prices
+      leverages: [...Array(buyPrices.length)].map(() => gridConfig.leverage), // Grid leverage
     });
 
     const sellResults: OrderResult[] = [];
@@ -175,22 +293,26 @@ async function testMultipleLimitOrders(): Promise<void> {
       console.log("\n⏳ Waiting 1 second before placing SELL orders...");
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      console.log("\n📉 STEP 2: Placing SELL orders one by one...");
+      console.log(
+        `\n📉 STEP 2: Placing ${sellPrices.length} SELL orders one by one...`
+      );
 
       // Place each SELL order individually
       for (let i = 0; i < sellPrices.length; i++) {
         console.log(
-          `\n📉 Placing SELL order ${i + 1}/5 at $${sellPrices[i]}...`
+          `\n📉 Placing SELL order ${i + 1}/${sellPrices.length} at $${
+            sellPrices[i]
+          }...`
         );
 
         const sellResult = await placer.placeMultipleOrders({
-          marketId: 15,
+          marketId: gridConfig.marketId,
           orderTypes: [true], // Single limit order
           tradeSides: [true], // Long
           directions: [true], // Close position
-          sizes: [0.0001], // 0.0001 BTC
+          sizes: [gridConfig.orderSize], // Grid order size
           prices: [sellPrices[i]], // Single sell price
-          leverages: [10], // 10x leverage
+          leverages: [gridConfig.leverage], // Grid leverage
         });
 
         sellResults.push(sellResult);
@@ -199,7 +321,7 @@ async function testMultipleLimitOrders(): Promise<void> {
           console.log(`✅ SELL order ${i + 1} placed successfully!`);
           console.log(`   Transaction Hash: ${sellResult.transactionHash}`);
           console.log(
-            `   Price: $${sellPrices[i]} | Size: 0.0001 BTC | Leverage: 10x`
+            `   Price: $${sellPrices[i]} | Size: ${gridConfig.orderSize} BTC | Leverage: ${gridConfig.leverage}x`
           );
         } else {
           console.log(`❌ SELL order ${i + 1} failed:`);
@@ -219,22 +341,26 @@ async function testMultipleLimitOrders(): Promise<void> {
 
     // Display final results
     console.log("\n" + "=".repeat(80));
-    console.log("MULTIPLE LIMIT ORDERS RESULT");
+    console.log("🎯 GRID TRADING BOT RESULTS");
     console.log("=".repeat(80));
 
     if (buyResult.success) {
-      console.log("BUY Orders: ✅ SUCCESS");
+      console.log("📈 BUY Orders: ✅ SUCCESS");
       console.log(`  - Transaction Hash: ${buyResult.transactionHash}`);
-      console.log(`  - 5 BUY orders placed at: $${buyPrices.join(", $")}`);
+      console.log(
+        `  - ${buyPrices.length} BUY orders placed at: $${buyPrices.join(
+          ", $"
+        )}`
+      );
 
       const successfulSells = sellResults.filter(
         (result) => result.success
       ).length;
       console.log(
-        `\nSELL Orders: ${
-          successfulSells === 5
+        `\n📉 SELL Orders: ${
+          successfulSells === buyPrices.length
             ? "✅ SUCCESS"
-            : `⚠️ PARTIAL (${successfulSells}/5)`
+            : `⚠️ PARTIAL (${successfulSells}/${buyPrices.length})`
         }`
       );
 
@@ -243,22 +369,23 @@ async function testMultipleLimitOrders(): Promise<void> {
         console.log(`  - SELL orders at: $${sellPrices.join(", $")}`);
       }
 
-      console.log("\n📊 ORDER PAIRS:");
+      console.log("\n📊 GRID TRADING PAIRS:");
       for (let i = 0; i < buyPrices.length; i++) {
         const sellResult = sellResults[i];
-        console.log(`  Order Pair ${i + 1}:`);
+        const profit = sellPrices[i] - buyPrices[i];
+        console.log(`  Grid Level ${i + 1}:`);
         console.log(
-          `    - BUY: BTC Long at $${buyPrices[i]} (10x) | Open Position ✅`
+          `    - BUY: BTC Long at $${buyPrices[i]} (${gridConfig.leverage}x) | Open Position ✅`
         );
 
         if (sellResult && sellResult.success) {
           console.log(
-            `    - SELL: BTC Close Long at $${sellPrices[i]} (10x) | Close Position (+$100) ✅`
+            `    - SELL: BTC Close Long at $${sellPrices[i]} (${gridConfig.leverage}x) | Close Position (+$${profit}) ✅`
           );
           console.log(`    - SELL Transaction: ${sellResult.transactionHash}`);
         } else {
           console.log(
-            `    - SELL: BTC Close Long at $${sellPrices[i]} (10x) | Close Position (+$100) ❌`
+            `    - SELL: BTC Close Long at $${sellPrices[i]} (${gridConfig.leverage}x) | Close Position (+$${profit}) ❌`
           );
           console.log(
             `    - SELL Error: ${sellResult?.error || "Not attempted"}`
@@ -266,19 +393,31 @@ async function testMultipleLimitOrders(): Promise<void> {
         }
 
         console.log(
-          `    - Strategy: If price hits $${buyPrices[i]} → BUY fills, then if price hits $${sellPrices[i]} → SELL fills (+$100 profit)`
+          `    - Strategy: If price hits $${buyPrices[i]} → BUY fills, then if price hits $${sellPrices[i]} → SELL fills (+$${profit} profit)`
         );
         console.log("");
       }
 
-      console.log("🎯 STRATEGY COMPLETE:");
-      console.log("  - 5 BUY orders placed in single transaction");
-      console.log("  - 5 SELL orders placed individually (one by one)");
-      console.log(`  - ${successfulSells}/5 sell orders successful`);
-      console.log("  - Each buy order has a corresponding sell order at +$100");
+      console.log("🎯 GRID TRADING STRATEGY COMPLETE:");
+      console.log(
+        `  - ${buyPrices.length} BUY orders placed in single transaction`
+      );
+      console.log(
+        `  - ${buyPrices.length} SELL orders placed individually (one by one)`
+      );
+      console.log(
+        `  - ${successfulSells}/${buyPrices.length} sell orders successful`
+      );
+      console.log(
+        `  - Each grid level targets +$${gridConfig.profitTarget} profit`
+      );
+      console.log(
+        `  - Total grid range: $${gridConfig.lowerBound} - $${gridConfig.upperBound}`
+      );
+      console.log(`  - Grid spacing: $${gridConfig.gridSpacing}`);
       console.log("  - WebSocket bot will monitor for any additional fills");
     } else {
-      console.log("BUY Orders: ❌ FAILED");
+      console.log("📈 BUY Orders: ❌ FAILED");
       console.log(`  - Error: ${buyResult.error}`);
     }
 

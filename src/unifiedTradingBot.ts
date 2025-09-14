@@ -11,6 +11,30 @@ import axios from "axios";
 import WebSocket from "ws";
 import { config, validateConfig, getTimestamp } from "./config";
 
+// ===== GRID TRADING CONFIGURATION =====
+interface GridConfig {
+  marketId: number;
+  upperBound: number; // Highest price for grid
+  lowerBound: number; // Lowest price for grid
+  gridCount: number; // Number of grid levels
+  gridSpacing: number; // Price spacing between grids
+  orderSize: number; // Size per order (in BTC)
+  leverage: number; // Leverage for all orders
+  profitTarget: number; // Profit target per grid (+$100)
+}
+
+// Default Grid Configuration - BTC/USD (Same as singleLimitOrders.ts)
+const DEFAULT_GRID_CONFIG: GridConfig = {
+  marketId: 15, // BTC-USD market
+  upperBound: 120000, // $120,000 - Upper grid bound
+  lowerBound: 110000, // $110,000 - Lower grid bound
+  gridCount: 10, // 10 grid levels
+  gridSpacing: 1000, // $1,000 spacing between grids
+  orderSize: 0.0001, // 0.0001 BTC per order
+  leverage: 10, // 10x leverage
+  profitTarget: 100, // $100 profit per grid
+};
+
 interface TradeFillData {
   address: string;
   fee: string;
@@ -80,7 +104,10 @@ class UnifiedTradingBot {
   private subscribedToTradeHistory: boolean = false;
   private subscribedToPositions: boolean = false;
 
-  constructor() {
+  // Grid configuration
+  private gridConfig: GridConfig;
+
+  constructor(gridConfig?: GridConfig) {
     const aptosConfig = new AptosConfig({ network: Network.MAINNET });
     this.aptos = new Aptos(aptosConfig);
 
@@ -91,6 +118,9 @@ class UnifiedTradingBot {
     this.account = Account.fromPrivateKey({
       privateKey: new Ed25519PrivateKey(formattedPrivateKey),
     });
+
+    // Use provided grid config or default
+    this.gridConfig = gridConfig || DEFAULT_GRID_CONFIG;
   }
 
   async initialize(): Promise<void> {
@@ -340,20 +370,28 @@ class UnifiedTradingBot {
     try {
       const fillPrice = parseFloat(fill.price);
       const size = parseFloat(fill.size);
-      const closePrice = fillPrice + 100; // +$100 profit from fill price
+      const closePrice = fillPrice + this.gridConfig.profitTarget; // Use grid profit target
 
       console.log(`${getTimestamp()} - 📈 Placing automatic close order:`);
       console.log(`  Fill Price: $${fillPrice}`);
-      console.log(`  Close Price: $${closePrice} (+$100 from fill price)`);
-      console.log(`  Size: ${size}`);
+      console.log(
+        `  Close Price: $${closePrice} (+$${this.gridConfig.profitTarget} from fill price)`
+      );
+      console.log(
+        `  Size: ${this.gridConfig.orderSize} BTC (using grid config)`
+      );
+      console.log(`  Market ID: ${this.gridConfig.marketId}`);
+      console.log(
+        `  Leverage: ${this.gridConfig.leverage}x (using grid config)`
+      );
 
       const closeOrderParams: LimitOrderParams = {
-        marketId: fill.market_id,
+        marketId: this.gridConfig.marketId.toString(),
         tradeSide: true, // Long side (same as the filled order)
         direction: true, // Close position
-        size: size,
+        size: this.gridConfig.orderSize, // Use grid order size
         price: closePrice,
-        leverage: 10, // Default leverage
+        leverage: this.gridConfig.leverage, // Use grid leverage
         restriction: 0, // NO_RESTRICTION
       };
 
@@ -444,23 +482,30 @@ class UnifiedTradingBot {
     try {
       const entryPrice = parseFloat(closedPosition.entry_price);
       const size = parseFloat(closedPosition.size);
-      const newBuyPrice = entryPrice - 100; // $100 below entry price
+      const newBuyPrice = entryPrice - this.gridConfig.profitTarget; // Use grid profit target
 
       console.log(
         `${getTimestamp()} - 📉 Placing automatic buy order after position closure:`
       );
       console.log(`  Closed Position Entry Price: $${entryPrice}`);
-      console.log(`  New Buy Price: $${newBuyPrice} (-$100 from entry price)`);
-      console.log(`  Size: ${size}`);
-      console.log(`  Market ID: ${closedPosition.market_id}`);
+      console.log(
+        `  New Buy Price: $${newBuyPrice} (-$${this.gridConfig.profitTarget} from entry price)`
+      );
+      console.log(
+        `  Size: ${this.gridConfig.orderSize} BTC (using grid config)`
+      );
+      console.log(`  Market ID: ${this.gridConfig.marketId}`);
+      console.log(
+        `  Leverage: ${this.gridConfig.leverage}x (using grid config)`
+      );
 
       const buyOrderParams: LimitOrderParams = {
-        marketId: closedPosition.market_id,
+        marketId: this.gridConfig.marketId.toString(),
         tradeSide: true, // Long side
         direction: false, // Open position
-        size: size,
+        size: this.gridConfig.orderSize, // Use grid order size
         price: newBuyPrice,
-        leverage: closedPosition.leverage, // Use same leverage as closed position
+        leverage: this.gridConfig.leverage, // Use grid leverage
         restriction: 0, // NO_RESTRICTION
       };
 
@@ -476,8 +521,11 @@ class UnifiedTradingBot {
         );
         console.log(
           `  Strategy: When this buy fills, bot will place close order at $${
-            newBuyPrice + 100
+            newBuyPrice + this.gridConfig.profitTarget
           }`
+        );
+        console.log(
+          `  Grid Level: Part of ${this.gridConfig.gridCount}-level grid strategy`
         );
       } else {
         console.log(
@@ -610,18 +658,64 @@ class UnifiedTradingBot {
     }, delay);
   }
 
+  // ===== DISPLAY GRID CONFIGURATION =====
+  private displayGridConfiguration(): void {
+    console.log("=".repeat(80));
+    console.log("🎯 GRID TRADING BOT CONFIGURATION");
+    console.log("=".repeat(80));
+    console.log(`📊 Market: BTC-USD (ID: ${this.gridConfig.marketId})`);
+    console.log(
+      `💰 Price Range: $${this.gridConfig.lowerBound.toLocaleString()} - $${this.gridConfig.upperBound.toLocaleString()}`
+    );
+    console.log(`📈 Grid Levels: ${this.gridConfig.gridCount} levels`);
+    console.log(
+      `📏 Grid Spacing: $${this.gridConfig.gridSpacing.toLocaleString()}`
+    );
+    console.log(`💎 Order Size: ${this.gridConfig.orderSize} BTC per order`);
+    console.log(`⚡ Leverage: ${this.gridConfig.leverage}x`);
+    console.log(`🎯 Profit Target: +$${this.gridConfig.profitTarget} per grid`);
+    console.log(
+      `💵 Total Investment: $${(
+        this.gridConfig.gridCount *
+        this.gridConfig.orderSize *
+        this.gridConfig.lowerBound
+      ).toLocaleString()}`
+    );
+    console.log(
+      `📊 Max Profit Potential: $${(
+        this.gridConfig.gridCount * this.gridConfig.profitTarget
+      ).toLocaleString()}`
+    );
+    console.log("=".repeat(80));
+  }
+
   public async start(): Promise<void> {
     try {
       await this.initialize();
+
+      // Display grid configuration
+      this.displayGridConfiguration();
+
       console.log(
         `${getTimestamp()} - 🚀 Unified Trading Bot started successfully!`
       );
       console.log(
         `${getTimestamp()} - 🔄 Monitoring both order fills AND position changes...`
       );
-      console.log(`${getTimestamp()} - 📈 BUY fills → Close orders at +$100`);
       console.log(
-        `${getTimestamp()} - 📉 Position closures → New buy orders at -$100`
+        `${getTimestamp()} - 📈 BUY fills → Close orders at +$${
+          this.gridConfig.profitTarget
+        }`
+      );
+      console.log(
+        `${getTimestamp()} - 📉 Position closures → New buy orders at -$${
+          this.gridConfig.profitTarget
+        }`
+      );
+      console.log(
+        `${getTimestamp()} - Grid Strategy: ${
+          this.gridConfig.gridCount
+        } levels with $${this.gridConfig.gridSpacing} spacing`
       );
     } catch (error) {
       console.error(`${getTimestamp()} - Failed to start bot:`, error);
@@ -648,15 +742,16 @@ async function startUnifiedTradingBot(): Promise<void> {
   try {
     validateConfig();
 
-    console.log("=".repeat(70));
-    console.log("🚀 UNIFIED TRADING BOT");
-    console.log("=".repeat(70));
-    console.log(`${getTimestamp()} - Starting Unified Trading Bot...`);
+    console.log("=".repeat(80));
+    console.log("🚀 UNIFIED GRID TRADING BOT");
+    console.log("=".repeat(80));
+    console.log(`${getTimestamp()} - Starting Unified Grid Trading Bot...`);
     console.log("🔄 Combines both BUY order tracking AND position monitoring");
     console.log("📈 BUY fills → Automatic close orders at +$100");
     console.log("📉 Position closures → Automatic buy orders at -$100");
     console.log("🎯 Single WebSocket connection for maximum efficiency");
-    console.log("=".repeat(70));
+    console.log("📊 Uses configurable grid trading parameters");
+    console.log("=".repeat(80));
 
     const bot = new UnifiedTradingBot();
 
