@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -6,24 +6,33 @@ dotenv.config();
 export const config = {
   // Kana Labs API Configuration
   kanaApiKey: process.env.KANA_API_KEY || "",
-  kanaRestUrl: process.env.KANA_REST || "https://perps-tradeapi.kanalabs.io",
+  kanaRestUrl: process.env.KANA_REST || "https://perps-tradeapi.kana.trade",
   kanaWsUrl:
-    process.env.KANA_WS ||
-    "wss://perpetuals-indexer-ws-develop.kanalabs.io/ws/",
+    process.env.KANA_WS || "wss://perpetuals-indexer-ws.kana.trade/ws/",
+  kanaWebSocketUrl:
+    process.env.KANA_WS || "wss://perpetuals-indexer-ws.kana.trade/ws/",
 
   // Aptos Configuration
   aptosPrivateKeyHex: process.env.APTOS_PRIVATE_KEY_HEX || "",
   aptosAddress: process.env.APTOS_ADDRESS || "",
   aptosNodeUrl:
-    process.env.APTOS_NODE || "https://fullnode.testnet.aptoslabs.com",
+    process.env.APTOS_NODE || "https://fullnode.mainnet.aptoslabs.com",
 
   // Market Configuration
   marketId: process.env.MARKET_ID || "BTC-USD-PERP",
+
+  // Copy Trading Configuration
+  targetWalletAddress: process.env.TARGET_WALLET_ADDRESS || "",
 };
 
 // Validation function to check required environment variables
 export function validateConfig(): void {
-  const required = ["KANA_API_KEY", "APTOS_PRIVATE_KEY_HEX", "APTOS_ADDRESS"];
+  const required = [
+    "KANA_API_KEY",
+    "APTOS_PRIVATE_KEY_HEX",
+    "APTOS_ADDRESS",
+    "TARGET_WALLET_ADDRESS",
+  ];
 
   const missing = required.filter((key) => !process.env[key]);
 

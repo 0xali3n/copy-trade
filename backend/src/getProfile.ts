@@ -6,7 +6,7 @@ import { kanaGet } from "./kanaClient";
  * Calls GET /getProfileAddress?userAddress=0x...
  */
 
-async function getProfile(): Promise<void> {
+export async function getProfile(): Promise<any> {
   console.log(`[getProfile] ${getTimestamp()} - Starting profile fetch...`);
 
   try {
@@ -95,8 +95,11 @@ async function getProfile(): Promise<void> {
           `[getProfile] ${getTimestamp()} - Balance: ${response.data.balance}`
         );
       }
+
+      return response.data;
     } else {
       console.log(`[getProfile] ${getTimestamp()} - No data in response`);
+      return null;
     }
   } catch (error) {
     console.error(

@@ -1,4 +1,13 @@
 import { config } from "./config";
+import {
+  Aptos,
+  AptosConfig,
+  Network,
+  Ed25519PrivateKey,
+  Account,
+  PrivateKey,
+  PrivateKeyVariants,
+} from "@aptos-labs/ts-sdk";
 
 /**
  * Kana Labs API Client
@@ -131,4 +140,94 @@ export function getRawTransaction(response: any): string | null {
     return response.raw_tx || response.tx_bytes;
   }
   return null;
+}
+
+export interface LimitOrderParams {
+  marketId: number;
+  tradeSide: boolean; // true = long, false = short
+  direction: boolean; // true = close, false = open
+  size: number;
+  price: number;
+  leverage: number;
+  restriction: number; // 0 = NO_RESTRICTION
+}
+
+export interface OrderResult {
+  success: boolean;
+  transactionHash?: string;
+  error?: string;
+}
+
+export async function placeLimitOrder(
+  params: LimitOrderParams
+): Promise<OrderResult> {
+  try {
+    const aptosConfig = new AptosConfig({ network: Network.MAINNET });
+    const aptos = new Aptos(aptosConfig);
+
+    const formattedPrivateKey = PrivateKey.formatPrivateKey(
+      config.aptosPrivateKeyHex,
+      "ed25519" as PrivateKeyVariants
+    );
+    const account = Account.fromPrivateKey({
+      privateKey: new Ed25519PrivateKey(formattedPrivateKey),
+    });
+
+    // Prepare request body
+    const body = {
+      marketId: params.marketId,
+      orderType: true, // true = limit order
+      tradeSide: params.tradeSide,
+      direction: params.direction,
+      size: params.size,
+      price: params.price,
+      leverage: params.leverage,
+      restriction: params.restriction,
+    };
+
+    // Get transaction payload from Kana Labs API
+    const response = await kanaPost("/placeLimitOrder", body);
+
+    if (response.error) {
+      return {
+        success: false,
+        error: response.error,
+      };
+    }
+
+    const payloadData = response.data;
+
+    // Build and submit transaction
+    const transactionPayload = await aptos.transaction.build.simple({
+      sender: account.accountAddress,
+      data: payloadData,
+    });
+
+    const committedTxn = await aptos.transaction.signAndSubmitTransaction({
+      transaction: transactionPayload,
+      signer: account,
+    });
+
+    // Wait for transaction confirmation
+    const response2 = await aptos.waitForTransaction({
+      transactionHash: committedTxn.hash,
+    });
+
+    if (response2.success) {
+      return {
+        success: true,
+        transactionHash: committedTxn.hash,
+      };
+    } else {
+      return {
+        success: false,
+        error: "Transaction failed to confirm",
+      };
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Unknown error occurred",
+    };
+  }
 }

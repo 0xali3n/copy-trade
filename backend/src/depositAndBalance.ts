@@ -33,7 +33,7 @@ class DepositAndBalanceTester {
   private account: Account;
 
   constructor() {
-    const aptosConfig = new AptosConfig({ network: Network.TESTNET });
+    const aptosConfig = new AptosConfig({ network: Network.MAINNET });
     this.aptos = new Aptos(aptosConfig);
 
     // Create account from private key
@@ -526,7 +526,7 @@ class DepositAndBalanceTester {
 }
 
 // Run the deposit and balance test
-async function testDepositAndBalance(): Promise<void> {
+export async function getDepositAndBalance(): Promise<any> {
   try {
     const tester = new DepositAndBalanceTester();
     await tester.runDepositAndBalanceTest();
@@ -541,5 +541,5 @@ async function testDepositAndBalance(): Promise<void> {
 
 // Run the test
 if (require.main === module) {
-  testDepositAndBalance();
+  getDepositAndBalance();
 }
