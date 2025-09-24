@@ -13,6 +13,9 @@ const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       dappConfig={{
         network: WALLET_CONFIG.network,
       }}
+      onError={(error) => {
+        console.error("Wallet Adapter Error:", error);
+      }}
     >
       {children}
     </AptosWalletAdapterProvider>

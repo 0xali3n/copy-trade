@@ -4,5 +4,5 @@ export const APTOS_NETWORK = Network.DEVNET; // Change to Network.MAINNET for pr
 
 export const WALLET_CONFIG = {
   network: APTOS_NETWORK,
-  autoConnect: false, // Set to true if you want wallets to auto-connect
+  autoConnect: true, // Auto-reconnect to previously connected wallet
 };

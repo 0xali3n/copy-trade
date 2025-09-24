@@ -1,7 +1,7 @@
 // src/App.tsx
 import React from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import WalletConnection from "./components/WalletConnection";
+import WalletButton from "./components/WalletButton";
 
 const App: React.FC = () => {
   const { connected } = useWallet();
@@ -9,7 +9,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 p-6">
+      <div className="absolute top-0 left-0 right-0 p-6 z-40">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -20,12 +20,7 @@ const App: React.FC = () => {
             </span>
           </div>
 
-          {connected && (
-            <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-white text-sm">Connected</span>
-            </div>
-          )}
+          <WalletButton />
         </div>
       </div>
 
@@ -92,18 +87,16 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Wallet Connection */}
-              <div className="mb-8">
-                <WalletConnection />
+              {/* Call to Action */}
+              <div className="text-center">
+                <p className="text-gray-400 mb-4">
+                  Ready to start your trading journey? Connect your wallet above
+                  to get started.
+                </p>
               </div>
             </>
           ) : (
             <>
-              {/* Connected State */}
-              <div className="mb-8">
-                <WalletConnection />
-              </div>
-
               {/* Dashboard Placeholder */}
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/20 max-w-4xl mx-auto">
                 <h2 className="text-3xl font-bold text-white mb-6">
