@@ -4,10 +4,12 @@ A clean, modern React frontend for the Kana Copy Trading Bot with Aptos wallet i
 
 ## 🚀 Features
 
-- **Clean Wallet Connection** - Connect to popular Aptos wallets (Petra, OKX, Martian, Pontem)
+- **Professional Wallet Connection** - Connect to popular Aptos wallets (Petra, Pontem, Martian, Rise, Fewcha)
 - **Modern UI** - Beautiful gradient design with Tailwind CSS
 - **Wallet Detection** - Automatically detects installed wallet extensions
 - **Responsive Design** - Works on all devices
+- **Real-time Connection Status** - Shows connection state in header
+- **Dashboard Integration** - Seamless transition to trading dashboard after connection
 
 ## 🛠️ Tech Stack
 
@@ -34,9 +36,10 @@ Frontend will run on `http://localhost:5173`
 ## 🔗 Supported Wallets
 
 - **Petra** - Official Aptos wallet
-- **OKX** - Multi-chain wallet
-- **Martian** - Aptos ecosystem wallet
 - **Pontem** - Aptos DeFi wallet
+- **Martian** - Aptos ecosystem wallet
+- **Rise** - Aptos wallet
+- **Fewcha** - Aptos wallet
 
 ## 🎨 Design
 
@@ -48,9 +51,10 @@ Frontend will run on `http://localhost:5173`
 ## 🔄 Next Steps
 
 1. **Wallet Connection** ✅ - Complete
-2. **Dashboard** - Coming next
+2. **Dashboard** ✅ - Basic dashboard implemented
 3. **Copy Trading Controls** - Coming next
 4. **Real-time Updates** - Coming next
+5. **Transaction Signing** - Coming next
 
 ## 📱 Usage
 
