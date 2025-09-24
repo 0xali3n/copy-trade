@@ -33,7 +33,7 @@ class DepositAndBalanceTester {
   private account: Account;
 
   constructor() {
-    const aptosConfig = new AptosConfig({ network: Network.TESTNET });
+    const aptosConfig = new AptosConfig({ network: Network.MAINNET });
     this.aptos = new Aptos(aptosConfig);
 
     // Create account from private key

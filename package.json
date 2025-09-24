@@ -1,20 +1,15 @@
 {
   "name": "kana-labs-trading-bot",
   "version": "1.0.0",
-  "description": "Kana Labs Perpetual Futures Trading Bot with Grid Strategy",
+  "description": "Kana Labs Copy Trading Bot - Monitor and display trades from any user",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "single-limit": "ts-node src/singleLimitOrders.ts",
-    "grid-bot": "ts-node src/gridTradingBot.ts",
-    "monitor-positions": "ts-node src/monitorPositions.ts",
-    "close-position": "ts-node src/closePosition.ts",
-    "websocket-bot": "ts-node src/websocketTradingBot.ts",
-    "exit-bot": "ts-node src/exitOrderBot.ts",
-    "position-bot": "ts-node src/positionBasedExitBot.ts",
-    "unified-bot": "ts-node src/unifiedTradingBot.ts"
+    "copy-trade": "ts-node src/copyTradingBot.ts",
+    "deposit": "ts-node src/depositAndBalance.ts",
+    "profile": "ts-node src/getProfile.ts"
   },
   "keywords": [
     "kana",
@@ -22,8 +17,9 @@
     "aptos",
     "trading",
     "bot",
-    "grid",
-    "futures"
+    "copy-trading",
+    "futures",
+    "websocket"
   ],
   "author": "Kana Labs",
   "license": "MIT",

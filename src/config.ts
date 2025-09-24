@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -18,11 +18,19 @@ export const config = {
 
   // Market Configuration
   marketId: process.env.MARKET_ID || "BTC-USD-PERP",
+
+  // Copy Trading Configuration
+  targetWalletAddress: process.env.TARGET_WALLET_ADDRESS || "",
 };
 
 // Validation function to check required environment variables
 export function validateConfig(): void {
-  const required = ["KANA_API_KEY", "APTOS_PRIVATE_KEY_HEX", "APTOS_ADDRESS"];
+  const required = [
+    "KANA_API_KEY",
+    "APTOS_PRIVATE_KEY_HEX",
+    "APTOS_ADDRESS",
+    "TARGET_WALLET_ADDRESS",
+  ];
 
   const missing = required.filter((key) => !process.env[key]);
 
