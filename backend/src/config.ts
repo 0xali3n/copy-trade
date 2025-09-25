@@ -4,54 +4,9 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 export const config = {
-  // Kana Labs API Configuration
-  kanaApiKey: process.env.KANA_API_KEY || "",
-  kanaRestUrl: process.env.KANA_REST || "https://perps-tradeapi.kana.trade",
-  kanaWsUrl:
-    process.env.KANA_WS || "wss://perpetuals-indexer-ws.kana.trade/ws/",
-  kanaWebSocketUrl:
-    process.env.KANA_WS || "wss://perpetuals-indexer-ws.kana.trade/ws/",
-
-  // Aptos Configuration
-  aptosPrivateKeyHex: process.env.APTOS_PRIVATE_KEY_HEX || "",
-  aptosAddress: process.env.APTOS_ADDRESS || "",
-  aptosNodeUrl:
-    process.env.APTOS_NODE || "https://fullnode.mainnet.aptoslabs.com",
-
-  // Market Configuration
-  marketId: process.env.MARKET_ID || "BTC-USD-PERP",
-
-  // Copy Trading Configuration
-  targetWalletAddress: process.env.TARGET_WALLET_ADDRESS || "",
-
-  // Supabase Configuration
-  supabaseUrl: process.env.SUPABASE_URL || "",
-  supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
-  supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  // Frontend URL for CORS
+  frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
 };
-
-// Validation function to check required environment variables
-export function validateConfig(): void {
-  const required = [
-    "KANA_API_KEY",
-    "APTOS_PRIVATE_KEY_HEX",
-    "APTOS_ADDRESS",
-    "TARGET_WALLET_ADDRESS",
-    "SUPABASE_URL",
-    "SUPABASE_SERVICE_ROLE_KEY",
-  ];
-
-  const missing = required.filter((key) => !process.env[key]);
-
-  if (missing.length > 0) {
-    console.error("❌ Missing required environment variables:");
-    missing.forEach((key) => console.error(`   - ${key}`));
-    console.error(
-      "\nPlease check your .env file and ensure all required variables are set."
-    );
-    process.exit(1);
-  }
-}
 
 // Helper function to get current timestamp for logging
 export function getTimestamp(): string {
