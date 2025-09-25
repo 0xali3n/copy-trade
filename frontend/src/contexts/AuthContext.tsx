@@ -143,7 +143,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .insert({
           wallet_address: user.wallet_address,
           aptos_wallet_address: walletAddress,
-          aptos_public_key: publicKeyHex,
           aptos_private_key: privateKeyHex,
         })
         .select()

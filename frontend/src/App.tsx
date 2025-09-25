@@ -4,7 +4,7 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useAuth } from "./contexts/AuthContext";
 import WalletButton from "./components/WalletButton";
 import LoadingSpinner from "./components/LoadingSpinner";
-import UserProfile from "./components/UserProfile";
+import KanaTest from "./components/KanaTest";
 
 const App: React.FC = () => {
   const { connected } = useWallet();
@@ -103,36 +103,33 @@ const App: React.FC = () => {
             </>
           ) : (
             <>
-              {/* Dashboard Placeholder */}
+              {/* Simple Dashboard */}
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/20 max-w-4xl mx-auto">
                 <h2 className="text-3xl font-bold text-white mb-6">
-                  Trading Dashboard
+                  Kana Labs Integration
                 </h2>
                 <p className="text-gray-300 text-lg mb-8">
-                  Welcome to your copy trading dashboard! Your wallet is
-                  connected and authenticated.
+                  Welcome! Your wallet is connected and active account is ready.
                 </p>
 
-                <UserProfile />
-
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-6">
                   <div className="bg-white/5 rounded-lg p-6 border border-white/10">
                     <h3 className="text-xl font-bold text-white mb-4">
-                      Portfolio
+                      Active Account
                     </h3>
-                    <p className="text-gray-400">
-                      Your trading portfolio will appear here
+                    <p className="text-gray-300 mb-2">
+                      <strong>Wallet Address:</strong> {user?.wallet_address}
+                    </p>
+                    <p className="text-gray-300 mb-2">
+                      <strong>Active Account:</strong>{" "}
+                      {user?.aptos_wallet_address}
+                    </p>
+                    <p className="text-gray-300">
+                      <strong>Status:</strong> Ready for Kana Labs integration
                     </p>
                   </div>
 
-                  <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-                    <h3 className="text-xl font-bold text-white mb-4">
-                      Active Trades
-                    </h3>
-                    <p className="text-gray-400">
-                      Your active copy trades will appear here
-                    </p>
-                  </div>
+                  <KanaTest />
                 </div>
               </div>
             </>
