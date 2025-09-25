@@ -1,5 +1,6 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { CopyTradingBot } from "../services/copyTradingService";
+import { authenticateUser, AuthenticatedRequest } from "../middleware/auth";
 
 const router = express.Router();
 
@@ -7,8 +8,9 @@ const router = express.Router();
 let copyTradingBot: CopyTradingBot | null = null;
 
 // Start copy trading
-router.post("/start", async (req, res) => {
+router.post("/start", authenticateUser, async (req: Request, res) => {
   try {
+    const user = (req as AuthenticatedRequest).user;
     const {
       targetWalletAddress,
       copySizeMultiplier,
@@ -55,7 +57,7 @@ router.post("/start", async (req, res) => {
 });
 
 // Stop copy trading
-router.post("/stop", async (req, res) => {
+router.post("/stop", authenticateUser, async (req: Request, res) => {
   try {
     if (!copyTradingBot || !copyTradingBot.isRunning()) {
       return res.status(400).json({
@@ -81,7 +83,7 @@ router.post("/stop", async (req, res) => {
 });
 
 // Get copy trading status
-router.get("/status", (req, res) => {
+router.get("/status", authenticateUser, (req: Request, res) => {
   try {
     const isRunning = copyTradingBot ? copyTradingBot.isRunning() : false;
 
@@ -107,7 +109,7 @@ router.get("/status", (req, res) => {
 });
 
 // Update copy trading settings
-router.put("/settings", async (req, res) => {
+router.put("/settings", authenticateUser, async (req: Request, res) => {
   try {
     const { copySizeMultiplier, maxCopySize, minCopySize } = req.body;
 
@@ -147,7 +149,7 @@ router.put("/settings", async (req, res) => {
 });
 
 // Get recent trading activity
-router.get("/activity", (req, res) => {
+router.get("/activity", authenticateUser, (req: Request, res) => {
   try {
     if (!copyTradingBot) {
       return res.json({

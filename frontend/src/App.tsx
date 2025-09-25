@@ -1,10 +1,14 @@
 // src/App.tsx
 import React from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useAuth } from "./contexts/AuthContext";
 import WalletButton from "./components/WalletButton";
+import LoadingSpinner from "./components/LoadingSpinner";
+import UserProfile from "./components/UserProfile";
 
 const App: React.FC = () => {
   const { connected } = useWallet();
+  const { isAuthenticated, user, isLoading } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -27,7 +31,9 @@ const App: React.FC = () => {
       {/* Main Content */}
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="text-center max-w-4xl mx-auto">
-          {!connected ? (
+          {isLoading ? (
+            <LoadingSpinner size="lg" text="Initializing authentication..." />
+          ) : !connected || !isAuthenticated ? (
             <>
               {/* Logo */}
               <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-8">
@@ -104,8 +110,10 @@ const App: React.FC = () => {
                 </h2>
                 <p className="text-gray-300 text-lg mb-8">
                   Welcome to your copy trading dashboard! Your wallet is
-                  connected and ready.
+                  connected and authenticated.
                 </p>
+
+                <UserProfile />
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="bg-white/5 rounded-lg p-6 border border-white/10">

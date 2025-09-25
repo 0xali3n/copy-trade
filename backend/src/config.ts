@@ -23,6 +23,11 @@ export const config = {
 
   // Copy Trading Configuration
   targetWalletAddress: process.env.TARGET_WALLET_ADDRESS || "",
+
+  // Supabase Configuration
+  supabaseUrl: process.env.SUPABASE_URL || "",
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+  supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
 };
 
 // Validation function to check required environment variables
@@ -32,6 +37,8 @@ export function validateConfig(): void {
     "APTOS_PRIVATE_KEY_HEX",
     "APTOS_ADDRESS",
     "TARGET_WALLET_ADDRESS",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
   ];
 
   const missing = required.filter((key) => !process.env[key]);

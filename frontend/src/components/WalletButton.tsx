@@ -1,23 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { WalletReadyState } from "@aptos-labs/wallet-adapter-react";
+import { useAuth } from "../contexts/AuthContext";
 
 const WalletButton: React.FC = () => {
   const { connect, disconnect, account, connected, wallet, wallets } =
     useWallet();
+  const { user, isAuthenticated, createActiveAccount, isLoading } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Debug logging
-  console.log(
-    "WalletButton - connected:",
-    connected,
-    "account:",
-    account,
-    "wallet:",
-    wallet
-  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -56,6 +48,14 @@ const WalletButton: React.FC = () => {
     }
   };
 
+  const handleCreateActiveAccount = async () => {
+    try {
+      await createActiveAccount();
+    } catch (error) {
+      console.error("Failed to create active account:", error);
+    }
+  };
+
   // Filter available wallets
   const availableWallets = wallets.filter(
     (wallet) =>
@@ -68,67 +68,132 @@ const WalletButton: React.FC = () => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  if (connected && account) {
+  // Show loading state while checking for existing account
+  if (connected && account && isAuthenticated && isLoading) {
     return (
-      <div className="relative" ref={dropdownRef}>
-        <button
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20 hover:bg-white/20 transition-all duration-300"
-        >
-          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-          <span className="text-white text-sm font-medium">
-            {formatAddress(account.address.toString())}
-          </span>
-          <svg
-            className={`w-4 h-4 text-white transition-transform duration-200 ${
-              isDropdownOpen ? "rotate-180" : ""
-            }`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
+        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+        <span className="text-white text-sm font-medium">Loading...</span>
+      </div>
+    );
+  }
+
+  if (connected && account && isAuthenticated) {
+    return (
+      <div className="flex items-center space-x-3">
+        {/* Create Active Account Button */}
+        {!user?.aptos_wallet_address && (
+          <button
+            onClick={handleCreateActiveAccount}
+            disabled={isLoading}
+            className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </button>
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <span>Creating...</span>
+              </>
+            ) : (
+              <>
+                <span>Create Active Account</span>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+              </>
+            )}
+          </button>
+        )}
 
-        {isDropdownOpen && (
-          <div className="absolute right-0 mt-2 w-64 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-xl z-50">
-            <div className="p-4">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-lg font-bold">
-                    {wallet?.name?.charAt(0) || "W"}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold">
-                    {wallet?.name || "Wallet"}
-                  </h3>
-                  <p className="text-gray-300 text-sm">Connected</p>
-                </div>
-              </div>
-
-              <div className="bg-white/5 rounded-lg p-3 mb-4">
-                <p className="text-gray-400 text-xs mb-1">Address</p>
-                <p className="text-white text-sm font-mono break-all">
-                  {account.address.toString()}
-                </p>
-              </div>
-
-              <button
-                onClick={handleDisconnect}
-                className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300"
-              >
-                Disconnect
-              </button>
-            </div>
+        {/* Show Active Account Address */}
+        {user?.aptos_wallet_address && (
+          <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-white text-sm font-medium">
+              Active: {formatAddress(user.aptos_wallet_address)}
+            </span>
           </div>
         )}
+
+        {/* Wallet Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20 hover:bg-white/20 transition-all duration-300"
+          >
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-white text-sm font-medium">
+              {formatAddress(account.address.toString())}
+            </span>
+            <svg
+              className={`w-4 h-4 text-white transition-transform duration-200 ${
+                isDropdownOpen ? "rotate-180" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-xl z-50">
+              <div className="p-4">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-lg font-bold">
+                      {wallet?.name?.charAt(0) || "W"}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-white font-semibold">
+                      {wallet?.name || "Wallet"}
+                    </h3>
+                    <p className="text-gray-300 text-sm">Connected</p>
+                  </div>
+                </div>
+
+                <div className="bg-white/5 rounded-lg p-3 mb-4">
+                  <p className="text-gray-400 text-xs mb-1">Connected Wallet</p>
+                  <p className="text-white text-sm font-mono break-all">
+                    {account.address.toString()}
+                  </p>
+                </div>
+
+                {user?.aptos_wallet_address && (
+                  <div className="bg-white/5 rounded-lg p-3 mb-4">
+                    <p className="text-gray-400 text-xs mb-1">Active Account</p>
+                    <p className="text-white text-sm font-mono break-all">
+                      {user.aptos_wallet_address}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleDisconnect}
+                  className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300"
+                >
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

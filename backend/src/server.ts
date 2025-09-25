@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import * as dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 import { validateConfig } from "./config";
 
 // Load environment variables
@@ -10,13 +11,20 @@ dotenv.config();
 import tradingRoutes from "./routes/trading";
 import dashboardRoutes from "./routes/dashboard";
 import userRoutes from "./routes/user";
+import authRoutes from "./routes/auth";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+  })
+);
 app.use(express.json());
+app.use(cookieParser());
 
 // Validate configuration on startup
 try {
@@ -28,6 +36,7 @@ try {
 }
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/trading", tradingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/user", userRoutes);

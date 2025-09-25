@@ -1,16 +1,19 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { getProfile } from "../getProfile";
 import { getDepositAndBalance } from "../depositAndBalance";
+import { authenticateUser, AuthenticatedRequest } from "../middleware/auth";
 
 const router = express.Router();
 
 // Get user profile information
-router.get("/profile", async (req, res) => {
+router.get("/profile", authenticateUser, async (req: Request, res) => {
   try {
+    const user = (req as AuthenticatedRequest).user;
     const profile = await getProfile();
     res.json({
       success: true,
       profile,
+      user: user,
     });
   } catch (error: any) {
     console.error("Error getting profile:", error);
@@ -22,12 +25,14 @@ router.get("/profile", async (req, res) => {
 });
 
 // Get user balance and deposit information
-router.get("/balance", async (req, res) => {
+router.get("/balance", authenticateUser, async (req: Request, res) => {
   try {
+    const user = (req as AuthenticatedRequest).user;
     const balance = await getDepositAndBalance();
     res.json({
       success: true,
       balance,
+      user: user,
     });
   } catch (error: any) {
     console.error("Error getting balance:", error);
@@ -63,8 +68,9 @@ router.get("/markets", (req, res) => {
 });
 
 // Get trading statistics
-router.get("/stats", (req, res) => {
+router.get("/stats", authenticateUser, async (req: Request, res) => {
   try {
+    const user = (req as AuthenticatedRequest).user;
     // This would typically come from a database
     const stats = {
       totalTrades: 0,
@@ -73,11 +79,13 @@ router.get("/stats", (req, res) => {
       winRate: 0,
       averageTradeSize: 0,
       lastTradeTime: null,
+      userId: user.id,
     };
 
     res.json({
       success: true,
       stats,
+      user: user,
     });
   } catch (error: any) {
     console.error("Error getting stats:", error);
