@@ -2,7 +2,6 @@ import React from "react";
 import { useAuth } from "./contexts/AuthContext";
 import GoogleAuthButton from "./components/GoogleAuthButton";
 import LoadingSpinner from "./components/LoadingSpinner";
-import KanaTest from "./components/KanaTest";
 import AuthDebug from "./components/AuthDebug";
 import WalletInfo from "./components/WalletInfo";
 
@@ -134,14 +133,13 @@ const App: React.FC = () => {
                 Welcome back!
               </h2>
               <p className="text-gray-300 text-lg mb-8">
-                Welcome, {user?.full_name || user?.email}! Your account is ready
-                for Kana Labs integration.
+                Welcome, {user?.full_name || user?.email}! Your Aptos wallet is
+                ready.
               </p>
 
               <div className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="max-w-2xl mx-auto">
                   <WalletInfo />
-                  <KanaTest />
                 </div>
               </div>
             </div>
