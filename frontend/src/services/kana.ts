@@ -188,6 +188,11 @@ export class KanaService {
 
     return { wallet, trading };
   }
+
+  // Check if the service is initialized
+  isServiceInitialized(): boolean {
+    return this.isInitialized && !!this.account;
+  }
 }
 
 // Check if API key is configured

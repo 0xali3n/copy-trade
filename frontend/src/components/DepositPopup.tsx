@@ -94,7 +94,6 @@ const DepositPopup: React.FC<DepositPopupProps> = ({
 
       setTimeout(() => {
         onTransferComplete();
-        onClose();
       }, 3000);
     } catch (error) {
       setStatus(`❌ Transfer failed: ${error}`);
@@ -135,39 +134,45 @@ const DepositPopup: React.FC<DepositPopupProps> = ({
     }
   };
 
-  const handleClose = async () => {
-    if (user?.aptos_wallet_address && user?.aptos_private_key) {
-      setStatus("🔍 Checking for wallet balance...");
-      setCheckingBalance(true);
+  const handleClose = () => {
+    // Close immediately - no waiting
+    onClose();
+  };
 
-      try {
-        const bal = await kana.getBalances();
-        const currentBalance = bal.wallet;
+  // Background check when popup closes
+  useEffect(() => {
+    if (!isOpen && user?.aptos_wallet_address && user?.aptos_private_key) {
+      // Run background check and transfer
+      triggerBackgroundCheckAndTransfer();
+    }
+  }, [isOpen, user?.aptos_wallet_address, user?.aptos_private_key]);
 
-        if (currentBalance > 0) {
-          setStatus(
-            `💰 Found wallet balance: $${currentBalance.toFixed(
-              2
-            )} - Auto-transferring to trading account...`
-          );
-          await autoTransfer(currentBalance);
-        } else {
-          setStatus("✅ No funds in wallet");
-          setTimeout(() => {
-            onClose();
-          }, 1500);
-        }
-      } catch (error) {
-        console.error("Error checking balance on close:", error);
-        setStatus("❌ Error checking balance");
-        setTimeout(() => {
-          onClose();
-        }, 2000);
-      } finally {
-        setCheckingBalance(false);
+  const triggerBackgroundCheckAndTransfer = async () => {
+    try {
+      console.log("🔄 Background: Checking wallet balance...");
+
+      // Initialize service if needed
+      if (!kana.isServiceInitialized()) {
+        kana.initialize(user?.aptos_private_key!);
       }
-    } else {
-      onClose();
+
+      const bal = await kana.getBalances();
+      const currentBalance = bal.wallet;
+
+      if (currentBalance > 0) {
+        console.log(
+          `💰 Background: Found wallet balance: $${currentBalance.toFixed(
+            2
+          )} - Auto-transferring...`
+        );
+        await kana.deposit(currentBalance);
+        console.log("✅ Background: Transfer completed successfully");
+        onTransferComplete();
+      } else {
+        console.log("✅ Background: No funds in wallet");
+      }
+    } catch (error) {
+      console.error("❌ Background: Error during check/transfer:", error);
     }
   };
 
@@ -180,8 +185,14 @@ const DepositPopup: React.FC<DepositPopupProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 w-80 p-5 relative">
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={handleClose}
+    >
+      <div
+        className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 w-80 p-5 relative"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close Button */}
         <button
           onClick={handleClose}
