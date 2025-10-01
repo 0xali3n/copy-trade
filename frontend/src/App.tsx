@@ -4,7 +4,8 @@ import GoogleAuthButton from "./components/GoogleAuthButton";
 import LoadingSpinner from "./components/LoadingSpinner";
 import AuthDebug from "./components/AuthDebug";
 import WalletInfo from "./components/WalletInfo";
-import Kana from "./components/Kana";
+import BalanceHeader from "./components/BalanceHeader";
+import DepositFlow from "./components/DepositFlow";
 
 const App: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
@@ -21,7 +22,10 @@ const App: React.FC = () => {
               </div>
               <h1 className="text-white text-xl font-bold">Kana Copy Trader</h1>
             </div>
-            <GoogleAuthButton />
+            <div className="flex items-center space-x-6">
+              <BalanceHeader />
+              <GoogleAuthButton />
+            </div>
           </div>
         </div>
       </header>
@@ -141,7 +145,7 @@ const App: React.FC = () => {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <WalletInfo />
-                  <Kana />
+                  <DepositFlow />
                 </div>
               </div>
             </div>
