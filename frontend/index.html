@@ -1,10 +1,26 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <meta
+      name="description"
+      content="Kana Copy Trader - Professional copy trading for Kana Labs Perpetual Futures"
+    />
+    <title>Kana Copy Trader</title>
+
+    <!-- Disable wallet extensions from interfering with OAuth -->
+    <meta name="wallet-extension" content="disabled" />
+    <script>
+      // Disable Petra wallet and other wallet extensions from interfering
+      if (window.petra) {
+        window.petra = undefined;
+      }
+      if (window.aptos) {
+        window.aptos = undefined;
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
