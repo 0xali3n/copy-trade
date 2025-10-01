@@ -20,7 +20,6 @@ const DepositPopup: React.FC<DepositPopupProps> = ({
   const [checkingBalance, setCheckingBalance] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [status, setStatus] = useState<string>("");
-  const [lastBalance, setLastBalance] = useState<number>(0);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
   useEffect(() => {
@@ -72,8 +71,6 @@ const DepositPopup: React.FC<DepositPopupProps> = ({
       } else {
         setStatus("✅ Wallet balance is $0.00 - Ready for new deposits");
       }
-
-      setLastBalance(currentBalance);
     } catch (error) {
       console.error("Error checking wallet balance:", error);
       setStatus("❌ Error checking wallet balance");
@@ -124,8 +121,6 @@ const DepositPopup: React.FC<DepositPopupProps> = ({
         setStatus("✅ No funds in wallet - Ready for new deposits");
         setTimeout(() => setStatus(""), 2000);
       }
-
-      setLastBalance(currentBalance);
     } catch (error) {
       console.error("Error checking for deposits:", error);
       setStatus("❌ Error checking for deposits");

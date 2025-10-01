@@ -21,24 +21,30 @@ export class WalletService {
 
       // Generate a new private key
       const privateKey = Ed25519PrivateKey.generate();
-      console.log("✅ Private key generated");
+      console.log("✅ Private key generated:", privateKey.toString());
 
       // Derive the public key from the private key
       const publicKey = privateKey.publicKey();
-      console.log("✅ Public key derived");
+      console.log("✅ Public key derived:", publicKey.toString());
 
-      // Create an account from the public key
-      const account = Account.fromPublicKey(publicKey);
-      console.log("✅ Account created from public key");
+      // Create an account from the private key (not public key)
+      const account = Account.fromPrivateKey({ privateKey });
+      console.log("✅ Account created from private key");
 
-      // Get the account address
+      // Get the account address - this is the CORRECT wallet address
       const address = account.accountAddress.toString();
       console.log("✅ Account address generated:", address);
+      console.log("🔍 Address format check:", {
+        startsWith0x: address.startsWith("0x"),
+        length: address.length,
+        isValidLength: address.length === 66,
+        address: address,
+      });
 
       const walletInfo = {
         address,
         publicKey: publicKey.toString(),
-        privateKey: privateKey.toString(),
+        privateKey: privateKey.toString().replace("ed25519-priv-", ""), // Remove prefix
       };
 
       console.log("🎉 Aptos wallet generation completed successfully:", {
@@ -109,5 +115,40 @@ export class WalletService {
   static formatAddress(address: string): string {
     if (address.length <= 10) return address;
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  }
+
+  /**
+   * Verify that a private key generates the expected address
+   * @param privateKeyHex Private key in hex format
+   * @param expectedAddress Expected address
+   * @returns boolean indicating if the private key generates the expected address
+   */
+  static verifyPrivateKey(
+    privateKeyHex: string,
+    expectedAddress: string
+  ): boolean {
+    try {
+      console.log("🔍 Verifying private key generates correct address...");
+
+      // Add prefix back if it's missing (for verification)
+      const fullPrivateKey = privateKeyHex.startsWith("ed25519-priv-")
+        ? privateKeyHex
+        : `ed25519-priv-${privateKeyHex}`;
+
+      const privateKey = new Ed25519PrivateKey(fullPrivateKey);
+      const account = Account.fromPrivateKey({ privateKey });
+      const generatedAddress = account.accountAddress.toString();
+
+      console.log("🔍 Verification results:", {
+        expectedAddress,
+        generatedAddress,
+        match: expectedAddress === generatedAddress,
+      });
+
+      return expectedAddress === generatedAddress;
+    } catch (error) {
+      console.error("❌ Error verifying private key:", error);
+      return false;
+    }
   }
 }

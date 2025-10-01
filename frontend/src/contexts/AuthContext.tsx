@@ -280,9 +280,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       console.log("🔍 Generated wallet info:", {
         address: walletInfo.address,
+        addressLength: walletInfo.address.length,
+        publicKey: walletInfo.publicKey,
         publicKeyLength: walletInfo.publicKey.length,
         privateKeyLength: walletInfo.privateKey.length,
       });
+      console.log(
+        "🎯 IMPORTANT: Use this ADDRESS to send money:",
+        walletInfo.address
+      );
+      console.log(
+        "⚠️  Public key is NOT an address - don't use it for transactions!"
+      );
+
+      // Verify the private key generates the same address
+      const isVerified = WalletService.verifyPrivateKey(
+        walletInfo.privateKey,
+        walletInfo.address
+      );
+      if (!isVerified) {
+        console.error(
+          "🚨 CRITICAL: Private key does not generate the expected address!"
+        );
+      } else {
+        console.log(
+          "✅ Verification passed: Private key generates correct address"
+        );
+      }
 
       // Save wallet to database
       console.log("🔄 Saving wallet to database...");
@@ -366,9 +390,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       console.log("🔍 Generated wallet info:", {
         address: walletInfo.address,
+        addressLength: walletInfo.address.length,
+        publicKey: walletInfo.publicKey,
         publicKeyLength: walletInfo.publicKey.length,
         privateKeyLength: walletInfo.privateKey.length,
       });
+      console.log(
+        "🎯 IMPORTANT: Use this ADDRESS to send money:",
+        walletInfo.address
+      );
+      console.log(
+        "⚠️  Public key is NOT an address - don't use it for transactions!"
+      );
+
+      // Verify the private key generates the same address
+      const isVerified = WalletService.verifyPrivateKey(
+        walletInfo.privateKey,
+        walletInfo.address
+      );
+      if (!isVerified) {
+        console.error(
+          "🚨 CRITICAL: Private key does not generate the expected address!"
+        );
+      } else {
+        console.log(
+          "✅ Verification passed: Private key generates correct address"
+        );
+      }
 
       // Save wallet to database
       console.log("🔄 Saving wallet to database...");

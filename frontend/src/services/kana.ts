@@ -67,7 +67,12 @@ export class KanaService {
     try {
       console.log("[Kana] Initializing with private key...");
 
-      const privateKey = new Ed25519PrivateKey(privateKeyHex);
+      // Add prefix back if it's missing
+      const fullPrivateKey = privateKeyHex.startsWith("ed25519-priv-")
+        ? privateKeyHex
+        : `ed25519-priv-${privateKeyHex}`;
+
+      const privateKey = new Ed25519PrivateKey(fullPrivateKey);
       this.account = Account.fromPrivateKey({ privateKey });
 
       this.isInitialized = true;
