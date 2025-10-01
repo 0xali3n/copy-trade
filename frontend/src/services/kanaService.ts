@@ -40,12 +40,9 @@ export class KanaService {
         privateKey: new Ed25519PrivateKey(formattedPrivateKey),
       });
 
-      console.log(
-        `✅ KanaService initialized: ${this.account.accountAddress.toString()}`
-      );
+      // KanaService initialized
       return true;
     } catch (error) {
-      console.error("❌ Failed to initialize KanaService:", error);
       return false;
     }
   }

@@ -5,35 +5,27 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { Ed25519PrivateKey, Account } from "@aptos-labs/ts-sdk";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-// Supabase client - Use anon key with different options
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-});
-
-// Types
 export interface User {
-  wallet_address: string;
-  wallet_name?: string;
-  aptos_wallet_address?: string;
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  google_id?: string;
   aptos_public_key?: string;
   aptos_private_key?: string;
+  created_at?: string;
+  last_login?: string;
 }
 
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  signInWithGoogle: () => Promise<void>;
+  signOut: () => Promise<void>;
   createActiveAccount: () => Promise<void>;
 }
 
@@ -45,71 +37,176 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { account, connected } = useWallet();
+  const [isLoading, setIsLoading] = useState(true);
 
   const isAuthenticated = !!user;
 
-  // Auto-set user when wallet connects and check for existing active account
+  // Clean up URL parameters after authentication
   useEffect(() => {
-    if (connected && account?.address) {
-      handleWalletConnect();
-    } else {
-      setUser(null);
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasAuthParams =
+      urlParams.has("code") ||
+      urlParams.has("state") ||
+      urlParams.has("access_token");
+
+    if (hasAuthParams) {
+      // Clean up the URL by removing auth parameters
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
     }
-  }, [connected, account]);
+  }, []);
 
-  const handleWalletConnect = async () => {
-    if (!account?.address) return;
+  // Initialize auth state and listen for auth changes
+  useEffect(() => {
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout;
 
+    // Set a timeout to prevent infinite loading
+    timeoutId = setTimeout(() => {
+      if (mounted) {
+        setIsLoading(false);
+      }
+    }, 3000); // 3 second timeout
+
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error || !session?.user) {
+          if (mounted) {
+            setUser(null);
+            clearTimeout(timeoutId);
+            setIsLoading(false);
+          }
+          return;
+        }
+        if (mounted) {
+          clearTimeout(timeoutId);
+
+          // Set user immediately from session data
+          const sessionUser: User = {
+            id: session.user.id,
+            email: session.user.email || "",
+            full_name: session.user.user_metadata?.full_name,
+            avatar_url: session.user.user_metadata?.avatar_url,
+            google_id: session.user.user_metadata?.google_id,
+          };
+          setUser(sessionUser);
+
+          // Then try to load profile from database
+          await loadUserProfile(session.user);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        if (mounted) {
+          setUser(null);
+          clearTimeout(timeoutId);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      if (event === "SIGNED_IN" && session?.user) {
+        // Set user immediately from session data
+        const sessionUser: User = {
+          id: session.user.id,
+          email: session.user.email || "",
+          full_name: session.user.user_metadata?.full_name,
+          avatar_url: session.user.user_metadata?.avatar_url,
+          google_id: session.user.user_metadata?.google_id,
+        };
+        setUser(sessionUser);
+
+        // Then try to load profile from database
+        await loadUserProfile(session.user);
+        setIsLoading(false);
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+        setIsLoading(false);
+      } else if (event === "TOKEN_REFRESHED") {
+        // Don't change loading state for token refresh
+      }
+      // Don't handle INITIAL_SESSION here as it's handled in getInitialSession
+    });
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const loadUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
-      setIsLoading(true);
-
-      // Check Supabase directly (no localStorage)
-
-      // Check Supabase for existing user
-      console.log("Checking Supabase for existing user...");
-      const { data: existingUser, error } = await supabase
+      // Quick database query
+      const { data: userProfile, error } = await supabase
         .from("users")
         .select("*")
-        .eq("wallet_address", account.address.toString())
+        .eq("id", supabaseUser.id)
         .single();
 
-      if (existingUser && !error) {
-        // User exists in Supabase, load their data
-        const userData: User = {
-          wallet_address: existingUser.wallet_address,
-          wallet_name: existingUser.wallet_name,
-          aptos_wallet_address: existingUser.aptos_wallet_address,
-          aptos_public_key: existingUser.aptos_public_key,
-          aptos_private_key: existingUser.aptos_private_key,
-        };
-        setUser(userData);
-        console.log(
-          "✅ Loaded existing user from Supabase:",
-          existingUser.aptos_wallet_address
-            ? "Has active account"
-            : "No active account"
-        );
-        return;
+      if (!error && userProfile) {
+        setUser(userProfile);
+      }
+    } catch (error) {
+      // User is already set from session data, no need to set again
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        console.error("Google sign-in error:", error);
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("Sign-in failed:", error);
+      setIsLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      // Clear user state immediately
+      setUser(null);
+
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Sign-out error:", error);
       }
 
-      // New user, just set basic wallet info
-      const userData: User = {
-        wallet_address: account.address.toString(),
-        wallet_name: account.publicKey?.toString(),
-      };
-      setUser(userData);
-      console.log("New user connected, no active account yet");
+      // Clear localStorage
+      localStorage.removeItem("supabase.auth.token");
+
+      setIsLoading(false);
     } catch (error) {
-      console.error("Error checking user:", error);
-      // Fallback to basic wallet info
-      const userData: User = {
-        wallet_address: account.address.toString(),
-        wallet_name: account.publicKey?.toString(),
-      };
-      setUser(userData);
-    } finally {
+      console.error("Sign-out failed:", error);
+      setUser(null);
       setIsLoading(false);
     }
   };
@@ -118,59 +215,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!user) return;
 
     try {
-      setIsLoading(true);
-      console.log("Creating Aptos account...");
-
-      // Generate new Aptos account
-      const privateKey = Ed25519PrivateKey.generate();
-      const publicKey = privateKey.publicKey();
-      const account = Account.fromPrivateKey({ privateKey });
-
-      const walletAddress = account.accountAddress.toString();
-      const publicKeyHex = publicKey.toString();
-      const privateKeyHex = privateKey.toString();
-
-      console.log("=== APTOS WALLET CREATED ===");
-      console.log("Wallet Address:", walletAddress);
-      console.log("Public Key:", publicKeyHex);
-      console.log("Private Key:", privateKeyHex);
-      console.log("=============================");
-
-      // Store in Supabase - Try INSERT first
-      console.log("Storing in Supabase...");
       const { data, error } = await supabase
         .from("users")
-        .insert({
-          wallet_address: user.wallet_address,
-          aptos_wallet_address: walletAddress,
-          aptos_private_key: privateKeyHex,
+        .update({
+          aptos_public_key: "active_account_created",
+          last_login: new Date().toISOString(),
         })
+        .eq("id", user.id)
         .select()
         .single();
 
       if (error) {
-        console.error("❌ Supabase error:", error);
-        throw new Error("Failed to save active account: " + error.message);
+        console.error("Error creating active account:", error);
+        return;
       }
 
-      console.log("✅ Stored in Supabase:", data);
-
-      // Update user state with Supabase data
-      const updatedUser = {
-        ...user,
-        aptos_wallet_address: walletAddress,
-        aptos_public_key: publicKeyHex,
-        aptos_private_key: privateKeyHex,
-      };
-
-      setUser(updatedUser);
-
-      console.log("✅ Active account created and stored:", walletAddress);
+      if (data) {
+        setUser(data);
+      }
     } catch (error) {
-      console.error("Create active account error:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to create active account:", error);
     }
   };
 
@@ -178,6 +242,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     isAuthenticated,
     isLoading,
+    signInWithGoogle,
+    signOut,
     createActiveAccount,
   };
 

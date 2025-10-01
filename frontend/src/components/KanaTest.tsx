@@ -5,7 +5,7 @@ import { validateKanaConfig } from "../config/kanaConfig";
 import Deposit from "./Deposit";
 
 const KanaTest: React.FC = () => {
-  const { user } = useAuth();
+  const { user, createActiveAccount, isLoading: authLoading } = useAuth();
   const [kanaService] = useState(() => new KanaService());
   const [isInitialized, setIsInitialized] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
@@ -15,11 +15,9 @@ const KanaTest: React.FC = () => {
 
   useEffect(() => {
     if (user?.aptos_private_key) {
-      console.log("🔄 Initializing KanaService with private key...");
       const initResult = kanaService.initializeWithPrivateKey(
         user.aptos_private_key
       );
-      console.log("🔄 Initialization result:", initResult);
       if (initResult) {
         setIsInitialized(true);
         setConnectionStatus("✅ Kana service initialized successfully!");
@@ -30,7 +28,9 @@ const KanaTest: React.FC = () => {
       }
     } else {
       setIsInitialized(false);
-      setConnectionStatus("Waiting for active account to be created...");
+      setConnectionStatus(
+        "Create an active account to start using Kana Labs integration"
+      );
     }
   }, [user?.aptos_private_key]);
 
@@ -94,6 +94,15 @@ const KanaTest: React.FC = () => {
   const handleDepositSuccess = () => {
     // Refresh balances after successful deposit
     getBalances();
+  };
+
+  const handleCreateActiveAccount = async () => {
+    try {
+      await createActiveAccount();
+      setConnectionStatus("✅ Active account created successfully!");
+    } catch (error) {
+      setConnectionStatus("❌ Failed to create active account");
+    }
   };
 
   const configValidation = validateKanaConfig();
@@ -160,7 +169,24 @@ const KanaTest: React.FC = () => {
       )}
 
       {/* Action Buttons */}
-      <div className="flex space-x-3">
+      <div className="flex flex-wrap gap-3">
+        {!user?.aptos_wallet_address && (
+          <button
+            onClick={handleCreateActiveAccount}
+            disabled={authLoading}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300"
+          >
+            {authLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block mr-2"></div>
+                Creating...
+              </>
+            ) : (
+              "Create Active Account"
+            )}
+          </button>
+        )}
+
         <button
           onClick={testConnection}
           disabled={!isInitialized || isLoading}

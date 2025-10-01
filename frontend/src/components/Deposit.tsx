@@ -35,7 +35,7 @@ const Deposit: React.FC<DepositProps> = ({ kanaService, onDepositSuccess }) => {
         setTradingBalance(tradingResult.balance || 0);
       }
     } catch (error) {
-      console.error("Error loading balances:", error);
+      // Silent error handling
     }
   };
 
@@ -73,9 +73,11 @@ const Deposit: React.FC<DepositProps> = ({ kanaService, onDepositSuccess }) => {
         setDepositStatus(`❌ Deposit failed: ${result.error}`);
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      setDepositStatus(`❌ Deposit error: ${errorMessage}`);
+      setDepositStatus(
+        `❌ Deposit error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
       setIsDepositing(false);
     }

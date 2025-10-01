@@ -1,13 +1,11 @@
 // src/App.tsx
 import React from "react";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useAuth } from "./contexts/AuthContext";
-import WalletButton from "./components/WalletButton";
+import GoogleAuthButton from "./components/GoogleAuthButton";
 import LoadingSpinner from "./components/LoadingSpinner";
 import KanaTest from "./components/KanaTest";
 
 const App: React.FC = () => {
-  const { connected } = useWallet();
   const { isAuthenticated, user, isLoading } = useAuth();
 
   return (
@@ -24,7 +22,7 @@ const App: React.FC = () => {
             </span>
           </div>
 
-          <WalletButton />
+          <GoogleAuthButton />
         </div>
       </div>
 
@@ -33,7 +31,7 @@ const App: React.FC = () => {
         <div className="text-center max-w-4xl mx-auto">
           {isLoading ? (
             <LoadingSpinner size="lg" text="Initializing authentication..." />
-          ) : !connected || !isAuthenticated ? (
+          ) : !isAuthenticated ? (
             <>
               {/* Logo */}
               <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-8">
@@ -96,7 +94,7 @@ const App: React.FC = () => {
               {/* Call to Action */}
               <div className="text-center">
                 <p className="text-gray-400 mb-4">
-                  Ready to start your trading journey? Connect your wallet above
+                  Ready to start your trading journey? Sign in with Google above
                   to get started.
                 </p>
               </div>
@@ -109,7 +107,8 @@ const App: React.FC = () => {
                   Kana Labs Integration
                 </h2>
                 <p className="text-gray-300 text-lg mb-8">
-                  Welcome! Your wallet is connected and active account is ready.
+                  Welcome, {user?.full_name || user?.email}! Your account is
+                  ready for Kana Labs integration.
                 </p>
 
                 <div className="space-y-6">
@@ -118,14 +117,17 @@ const App: React.FC = () => {
                       Active Account
                     </h3>
                     <p className="text-gray-300 mb-2">
-                      <strong>Wallet Address:</strong> {user?.wallet_address}
+                      <strong>Email:</strong> {user?.email}
                     </p>
                     <p className="text-gray-300 mb-2">
                       <strong>Active Account:</strong>{" "}
-                      {user?.aptos_wallet_address}
+                      {user?.aptos_wallet_address || "Not created yet"}
                     </p>
                     <p className="text-gray-300">
-                      <strong>Status:</strong> Ready for Kana Labs integration
+                      <strong>Status:</strong>{" "}
+                      {user?.aptos_wallet_address
+                        ? "Ready for Kana Labs integration"
+                        : "Create active account to start trading"}
                     </p>
                   </div>
 

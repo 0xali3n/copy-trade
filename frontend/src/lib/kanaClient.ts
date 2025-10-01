@@ -21,8 +21,6 @@ export async function kanaGet<T = any>(path: string): Promise<KanaResponse<T>> {
   }`;
 
   try {
-    console.log(`[kanaClient] Making GET request to: ${url}`);
-
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -32,9 +30,6 @@ export async function kanaGet<T = any>(path: string): Promise<KanaResponse<T>> {
     });
 
     const data = (await response.json()) as any;
-
-    console.log(`[kanaClient] Response status: ${response.status}`);
-    console.log(`[kanaClient] Raw response:`, JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       return {
@@ -46,7 +41,6 @@ export async function kanaGet<T = any>(path: string): Promise<KanaResponse<T>> {
 
     return { data: data as T, status: response.status };
   } catch (error) {
-    console.error(`[kanaClient] GET request failed:`, error);
     return {
       error: error instanceof Error ? error.message : "Unknown error",
     };
@@ -65,9 +59,6 @@ export async function kanaPost<T = any>(
   }`;
 
   try {
-    console.log(`[kanaClient] Making POST request to: ${url}`);
-    console.log(`[kanaClient] Request body:`, JSON.stringify(body, null, 2));
-
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -79,9 +70,6 @@ export async function kanaPost<T = any>(
 
     const data = (await response.json()) as any;
 
-    console.log(`[kanaClient] Response status: ${response.status}`);
-    console.log(`[kanaClient] Raw response:`, JSON.stringify(data, null, 2));
-
     if (!response.ok) {
       return {
         error: `HTTP ${response.status}: ${response.statusText}`,
@@ -92,7 +80,6 @@ export async function kanaPost<T = any>(
 
     return { data: data as T, status: response.status };
   } catch (error) {
-    console.error(`[kanaClient] POST request failed:`, error);
     return {
       error: error instanceof Error ? error.message : "Unknown error",
     };
