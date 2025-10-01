@@ -1,14 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "./contexts/AuthContext";
 import GoogleAuthButton from "./components/GoogleAuthButton";
 import LoadingSpinner from "./components/LoadingSpinner";
-import AuthDebug from "./components/AuthDebug";
-import WalletInfo from "./components/WalletInfo";
 import BalanceHeader from "./components/BalanceHeader";
-import DepositFlow from "./components/DepositFlow";
+import DepositPopup from "./components/DepositPopup";
 
 const App: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const [isDepositPopupOpen, setIsDepositPopupOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
@@ -22,8 +21,10 @@ const App: React.FC = () => {
               </div>
               <h1 className="text-white text-xl font-bold">Kana Copy Trader</h1>
             </div>
-            <div className="flex items-center space-x-6">
-              <BalanceHeader />
+            <div className="flex items-center space-x-4">
+              <BalanceHeader
+                onDepositClick={() => setIsDepositPopupOpen(true)}
+              />
               <GoogleAuthButton />
             </div>
           </div>
@@ -142,19 +143,33 @@ const App: React.FC = () => {
                 ready.
               </p>
 
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <WalletInfo />
-                  <DepositFlow />
+              {/* Main content area - kept blank as requested */}
+              <div className="text-center py-20">
+                <div className="w-32 h-32 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                  <span className="text-white font-bold text-4xl">K</span>
                 </div>
+                <h2 className="text-3xl font-bold text-white mb-4">
+                  Welcome to Kana Copy Trader
+                </h2>
+                <p className="text-gray-300 text-lg max-w-2xl mx-auto">
+                  Your professional trading platform is ready. Use the deposit
+                  button above to add funds to your trading account.
+                </p>
               </div>
             </div>
           </div>
         )}
       </main>
 
-      {/* Debug Component */}
-      <AuthDebug />
+      {/* Deposit Popup */}
+      <DepositPopup
+        isOpen={isDepositPopupOpen}
+        onClose={() => setIsDepositPopupOpen(false)}
+        onTransferComplete={() => {
+          // Refresh balance or show success message
+          console.log("Transfer completed successfully");
+        }}
+      />
     </div>
   );
 };
