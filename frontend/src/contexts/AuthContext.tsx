@@ -29,6 +29,7 @@ export interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   createActiveAccount: () => Promise<void>;
+  generateWalletForUser: (userData: User) => Promise<void>;
   testDatabase: () => Promise<void>;
   checkDatabaseSchema: () => Promise<void>;
 }
@@ -196,6 +197,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           walletAddress: savedUser.aptos_wallet_address,
         });
         setUser(savedUser);
+
+        // Auto-generate wallet if user doesn't have one
+        if (!savedUser.aptos_wallet_address) {
+          console.log("🔄 New user detected, auto-generating wallet...");
+          generateWalletForUser(savedUser);
+        } else {
+          console.log("✅ Returning user, wallet already exists");
+        }
       } else if (error) {
         console.error("❌ Error saving user profile:", error);
         // Even if save fails, keep the session user
@@ -259,6 +268,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error("❌ AuthContext: Sign-out failed:", error);
       setUser(null);
       setIsLoading(false);
+    }
+  };
+
+  const generateWalletForUser = async (userData: User) => {
+    try {
+      console.log("🔄 Auto-generating wallet for new user:", userData.email);
+
+      // Generate new Aptos wallet
+      const walletInfo = WalletService.generateWallet();
+
+      console.log("🔍 Generated wallet info:", {
+        address: walletInfo.address,
+        publicKeyLength: walletInfo.publicKey.length,
+        privateKeyLength: walletInfo.privateKey.length,
+      });
+
+      // Save wallet to database
+      console.log("🔄 Saving wallet to database...");
+      const { data, error } = await supabase
+        .from("users")
+        .update({
+          aptos_wallet_address: walletInfo.address,
+          aptos_public_key: walletInfo.publicKey,
+          aptos_private_key: walletInfo.privateKey,
+          last_login: new Date().toISOString(),
+        })
+        .eq("id", userData.id)
+        .select()
+        .single();
+
+      console.log("🔍 Database update result:", {
+        hasData: !!data,
+        error: error?.message,
+        updatedUser: data
+          ? {
+              id: data.id,
+              email: data.email,
+              aptos_wallet_address: data.aptos_wallet_address,
+              aptos_public_key: data.aptos_public_key,
+            }
+          : null,
+      });
+
+      if (!error && data) {
+        console.log("✅ Wallet auto-generated and saved successfully");
+        setUser(data);
+      } else if (error) {
+        console.error("❌ Error auto-generating wallet:", error);
+      }
+    } catch (error) {
+      console.error("❌ Failed to auto-generate wallet:", error);
     }
   };
 
@@ -470,6 +530,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signInWithGoogle,
     signOut,
     createActiveAccount,
+    generateWalletForUser,
     testDatabase,
     checkDatabaseSchema,
   };

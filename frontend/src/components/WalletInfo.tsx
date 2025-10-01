@@ -2,28 +2,21 @@ import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 const WalletInfo: React.FC = () => {
-  const { user, createActiveAccount } = useAuth();
+  const { user } = useAuth();
   const [showPrivateKey, setShowPrivateKey] = useState(false);
 
   if (!user?.aptos_wallet_address) {
     return (
       <div className="bg-white/5 rounded-lg p-6 border border-white/10">
         <h3 className="text-xl font-bold text-white mb-4">Aptos Wallet</h3>
-        <p className="text-gray-300 mb-4">
-          No wallet created yet. Click the button below to generate your Aptos
-          wallet.
-        </p>
-        <button
-          onClick={createActiveAccount}
-          className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors mb-4"
-        >
-          Create Aptos Wallet
-        </button>
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-          <p className="text-yellow-400 text-sm">
-            ⚠️ Your wallet will be generated and stored securely in our
-            database.
-          </p>
+        <div className="flex items-center justify-center py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-gray-300">Generating your Aptos wallet...</p>
+            <p className="text-gray-400 text-sm mt-2">
+              This will only take a moment
+            </p>
+          </div>
         </div>
       </div>
     );
