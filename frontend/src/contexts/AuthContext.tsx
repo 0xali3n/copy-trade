@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { WalletService } from "../services/walletService";
 
 export interface User {
   id: string;
@@ -14,6 +15,7 @@ export interface User {
   full_name?: string;
   avatar_url?: string;
   google_id?: string;
+  aptos_wallet_address?: string;
   aptos_public_key?: string;
   aptos_private_key?: string;
   created_at?: string;
@@ -46,17 +48,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize auth state
   useEffect(() => {
     let mounted = true;
-    let timeoutId: NodeJS.Timeout;
 
     console.log("🔄 AuthContext: Initializing authentication...");
-
-    // Set a timeout to prevent infinite loading
-    timeoutId = setTimeout(() => {
-      if (mounted) {
-        console.log("⏰ AuthContext: Timeout reached, stopping loading");
-        setIsLoading(false);
-      }
-    }, 10000); // 10 second timeout
 
     const initializeAuth = async () => {
       try {
@@ -78,7 +71,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log("⚠️ AuthContext: No initial session found");
           if (mounted) {
             setUser(null);
-            clearTimeout(timeoutId);
             setIsLoading(false);
           }
           return;
@@ -86,7 +78,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (mounted) {
           console.log("✅ Initial session found, setting user");
-          clearTimeout(timeoutId);
           // Set user from session
           const sessionUser: User = {
             id: session.user.id,
@@ -97,16 +88,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
           console.log("🔍 Setting session user:", sessionUser);
           setUser(sessionUser);
+          setIsLoading(false); // Stop loading immediately after setting user
 
-          // Save user to database
-          await loadUserProfile(session.user);
-          setIsLoading(false);
+          // Save user to database (don't wait for this)
+          loadUserProfile(session.user).catch((error) => {
+            console.error("❌ Error in loadUserProfile:", error);
+          });
         }
       } catch (error) {
         console.error("❌ AuthContext: Auth initialization error:", error);
         if (mounted) {
           setUser(null);
-          clearTimeout(timeoutId);
           setIsLoading(false);
         }
       }
@@ -138,8 +130,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log("🔍 Setting session user:", sessionUser);
         setUser(sessionUser);
 
-        // Save user to database
-        await loadUserProfile(session.user);
+        // Save user to database (don't wait for this)
+        loadUserProfile(session.user).catch((error) => {
+          console.error("❌ Error in loadUserProfile:", error);
+        });
         setIsLoading(false);
       } else if (event === "SIGNED_OUT") {
         console.log("❌ User signed out");
@@ -172,36 +166,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       console.log("🔍 User data to save:", userData);
 
-      // Add timeout to database operation
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Database operation timeout")), 5000);
-      });
-
-      const upsertPromise = supabase
+      // Use upsert without timeout to prevent premature failures
+      const { data: savedUser, error } = await supabase
         .from("users")
         .upsert(userData, { onConflict: "id" })
         .select()
         .single();
 
-      const { data: savedUser, error } = (await Promise.race([
-        upsertPromise,
-        timeoutPromise,
-      ])) as any;
-
       console.log("🔍 Database save result:", {
         hasData: !!savedUser,
         error: error?.message,
+        errorCode: error?.code,
+        errorDetails: error?.details,
         savedUser: savedUser
           ? {
               id: savedUser.id,
               email: savedUser.email,
               full_name: savedUser.full_name,
+              hasWallet: !!savedUser.aptos_wallet_address,
+              walletAddress: savedUser.aptos_wallet_address,
             }
           : null,
       });
 
       if (!error && savedUser) {
         console.log("✅ User profile saved successfully");
+        console.log("🔍 Saved user wallet data:", {
+          hasWallet: !!savedUser.aptos_wallet_address,
+          walletAddress: savedUser.aptos_wallet_address,
+        });
         setUser(savedUser);
       } else if (error) {
         console.error("❌ Error saving user profile:", error);
@@ -271,46 +264,87 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const createActiveAccount = async () => {
     if (!user) {
-      console.error("❌ AuthContext: No user found for createActiveAccount");
+      console.error("❌ No user found for createActiveAccount");
       return;
     }
 
     try {
-      console.log(
-        "🔄 AuthContext: Creating active account for user:",
-        user.email
-      );
+      console.log("🔄 Creating active account for user:", user.email);
+      console.log("🔄 Current user state:", {
+        id: user.id,
+        email: user.email,
+        hasWallet: !!user.aptos_wallet_address,
+      });
 
+      // Check if user already has a wallet
+      if (user.aptos_wallet_address) {
+        console.log("⚠️ User already has a wallet:", user.aptos_wallet_address);
+        console.log("✅ Wallet already exists, no need to create a new one");
+
+        // Just update last login time
+        const { data, error } = await supabase
+          .from("users")
+          .update({
+            last_login: new Date().toISOString(),
+          })
+          .eq("id", user.id)
+          .select()
+          .single();
+
+        if (!error && data) {
+          console.log("✅ Last login time updated");
+          setUser(data);
+        } else if (error) {
+          console.error("❌ Error updating last login:", error);
+        }
+        return;
+      }
+
+      // Generate new Aptos wallet
+      console.log("🔄 Generating new Aptos wallet...");
+      const walletInfo = WalletService.generateWallet();
+
+      console.log("🔍 Generated wallet info:", {
+        address: walletInfo.address,
+        publicKeyLength: walletInfo.publicKey.length,
+        privateKeyLength: walletInfo.privateKey.length,
+      });
+
+      // Save wallet to database
+      console.log("🔄 Saving wallet to database...");
       const { data, error } = await supabase
         .from("users")
         .update({
-          aptos_public_key: "active_account_created",
+          aptos_wallet_address: walletInfo.address,
+          aptos_public_key: walletInfo.publicKey,
+          aptos_private_key: walletInfo.privateKey,
           last_login: new Date().toISOString(),
         })
         .eq("id", user.id)
         .select()
         .single();
 
-      console.log("🔍 AuthContext: Update result:", {
+      console.log("🔍 Database update result:", {
         hasData: !!data,
         error: error?.message,
         updatedUser: data
           ? {
               id: data.id,
               email: data.email,
+              aptos_wallet_address: data.aptos_wallet_address,
               aptos_public_key: data.aptos_public_key,
             }
           : null,
       });
 
       if (!error && data) {
-        console.log("✅ AuthContext: Active account created successfully");
+        console.log("✅ Active account with Aptos wallet created successfully");
         setUser(data);
       } else if (error) {
-        console.error("❌ AuthContext: Error creating active account:", error);
+        console.error("❌ Error creating active account:", error);
       }
     } catch (error) {
-      console.error("❌ AuthContext: Failed to create active account:", error);
+      console.error("❌ Failed to create active account:", error);
     }
   };
 

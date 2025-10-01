@@ -4,6 +4,7 @@ import GoogleAuthButton from "./components/GoogleAuthButton";
 import LoadingSpinner from "./components/LoadingSpinner";
 import KanaTest from "./components/KanaTest";
 import AuthDebug from "./components/AuthDebug";
+import WalletInfo from "./components/WalletInfo";
 
 const App: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
@@ -138,26 +139,10 @@ const App: React.FC = () => {
               </p>
 
               <div className="space-y-6">
-                <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-                  <h3 className="text-xl font-bold text-white mb-4">
-                    Active Account
-                  </h3>
-                  <p className="text-gray-300 mb-2">
-                    <strong>Email:</strong> {user?.email}
-                  </p>
-                  <p className="text-gray-300 mb-2">
-                    <strong>Active Account:</strong>{" "}
-                    {user?.aptos_public_key || "Not created yet"}
-                  </p>
-                  <p className="text-gray-300">
-                    <strong>Status:</strong>{" "}
-                    {user?.aptos_public_key
-                      ? "Ready for Kana Labs integration"
-                      : "Create active account to start trading"}
-                  </p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <WalletInfo />
+                  <KanaTest />
                 </div>
-
-                <KanaTest />
               </div>
             </div>
           </div>

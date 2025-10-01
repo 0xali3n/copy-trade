@@ -14,7 +14,7 @@ const KanaTest: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.aptos_private_key) {
+    if (user?.aptos_wallet_address && user?.aptos_private_key) {
       const initResult = kanaService.initializeWithPrivateKey(
         user.aptos_private_key
       );
@@ -32,7 +32,7 @@ const KanaTest: React.FC = () => {
         "Create an active account to start using Kana Labs integration"
       );
     }
-  }, [user?.aptos_private_key]);
+  }, [user?.aptos_wallet_address, user?.aptos_private_key]);
 
   const testConnection = async () => {
     if (!isInitialized) {
@@ -99,7 +99,8 @@ const KanaTest: React.FC = () => {
   const handleCreateActiveAccount = async () => {
     try {
       await createActiveAccount();
-      setConnectionStatus("✅ Active account created successfully!");
+      // The status will be updated by the useEffect when user data changes
+      console.log("✅ Active account creation completed");
     } catch (error) {
       setConnectionStatus("❌ Failed to create active account");
     }
