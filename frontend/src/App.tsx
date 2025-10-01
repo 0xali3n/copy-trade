@@ -4,6 +4,7 @@ import GoogleAuthButton from "./components/GoogleAuthButton";
 import LoadingSpinner from "./components/LoadingSpinner";
 import AuthDebug from "./components/AuthDebug";
 import WalletInfo from "./components/WalletInfo";
+import Kana from "./components/Kana";
 
 const App: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
@@ -138,8 +139,9 @@ const App: React.FC = () => {
               </p>
 
               <div className="space-y-6">
-                <div className="max-w-2xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <WalletInfo />
+                  <Kana />
                 </div>
               </div>
             </div>
