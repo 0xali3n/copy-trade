@@ -26,22 +26,37 @@ export const config = {
 
   // Gas Wallet Configuration
   gasWalletPrivateKey: process.env.GAS_WALLET_PRIVATE_KEY || "",
+
+  // Copy Trading Configuration (from root src/config.ts)
+  aptosPrivateKeyHex: process.env.APTOS_PRIVATE_KEY_HEX || "",
+  aptosAddress: process.env.APTOS_ADDRESS || "",
+  targetWalletAddress: process.env.TARGET_WALLET_ADDRESS || "",
 };
 
 // Validation function to check if all required environment variables are set
 export function validateConfig(): void {
-  const requiredVars = [
-    "SUPABASE_URL",
-    "SUPABASE_SERVICE_KEY",
-    "KANA_API_KEY",
-    "GAS_WALLET_PRIVATE_KEY",
-  ];
+  const requiredVars = ["KANA_API_KEY"];
 
   const missing = requiredVars.filter((varName) => !process.env[varName]);
 
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missing.join(", ")}`
+    );
+  }
+}
+
+// Validation function for copy trading (optional)
+export function validateCopyTradingConfig(): void {
+  const requiredVars = ["APTOS_PRIVATE_KEY_HEX", "TARGET_WALLET_ADDRESS"];
+
+  const missing = requiredVars.filter((varName) => !process.env[varName]);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables for copy trading: ${missing.join(
+        ", "
+      )}`
     );
   }
 }

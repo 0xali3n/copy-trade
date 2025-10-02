@@ -1,48 +1,85 @@
-# Database Setup for Kana Copy Trader
+# Database Setup for Copy Trading Bots
 
-This directory contains SQL scripts to set up the database tables for the Kana Copy Trader application.
+This directory contains the SQL scripts needed to set up the copy trading bot functionality.
 
-## Setup Instructions
+## Quick Setup
 
-1. **Run the posts table creation script:**
+### Option 1: Simple Setup (Recommended for testing)
 
-   ```sql
-   -- Execute the contents of posts_table.sql in your Supabase SQL editor
-   ```
+1. **Go to your Supabase Dashboard**
 
-2. **The script creates the following tables:**
+   - Open your Supabase project
+   - Go to the SQL Editor
 
-   - `posts` - Main table for storing social media trading posts
-   - `post_likes` - Table for tracking post likes
-   - `post_comments` - Table for storing post comments
+2. **Run the Simple Table Creation Script**
 
-3. **Features included:**
-   - Row Level Security (RLS) policies
-   - Automatic timestamp updates
-   - Engagement count triggers
-   - Support for different post types (text, image, trade, poll)
+   - Copy the contents of `simple_copy_trading_bots.sql`
+   - Paste it into the SQL Editor
+   - Click "Run" to execute
 
-## Post Types Supported
+3. **Verify the Table**
+   - Go to Table Editor
+   - You should see a new table called `copy_trading_bots`
 
-- **Text Posts**: Simple text content
-- **Image Posts**: Text with an attached image
-- **Trade Posts**: Trading information with entry/exit prices, leverage, etc.
-- **Poll Posts**: Interactive polls with multiple options
+### Option 2: If you already have the table but getting permission errors
 
-## Security
+1. **Run the Permission Fix Script**
+   - Copy the contents of `fix_copy_trading_bots_permissions.sql`
+   - Paste it into the SQL Editor
+   - Click "Run" to execute
 
-All tables have Row Level Security enabled with appropriate policies:
+### Option 3: Original Setup (if you want user-specific access)
 
-- Users can read all posts (public feed)
-- Users can only create/update/delete their own posts
-- Users can like/unlike any post
-- Users can comment on any post but only edit/delete their own comments
+1. **Run the Original Script**
+   - Copy the contents of `create_copy_trading_bots_table.sql`
+   - Paste it into the SQL Editor
+   - Click "Run" to execute
 
-## Real-time Features
+## What This Creates
 
-The database is set up to support real-time updates for:
+The script creates a single table `copy_trading_bots` with:
 
-- New posts
-- Post likes/unlikes
-- Post comments
-- Engagement count updates
+- **Basic Bot Info**: `bot_name`, `target_address`, `status`
+- **User Association**: `user_id` (links to auth.users)
+- **Trading Settings**: `copy_size_multiplier`, `min_copy_size`, `max_copy_size`
+- **Performance Tracking**: `total_trades`, `successful_trades`, `failed_trades`, `total_pnl`, `win_rate`
+- **Timestamps**: `created_at`, `updated_at`, `last_trade_at`, `started_at`
+
+## Security Features
+
+- **Row Level Security (RLS)** enabled
+- **Policies** ensure users can only see/modify their own bots
+- **Automatic timestamps** with triggers
+
+## Testing
+
+After running the SQL script:
+
+1. Go to your frontend dashboard
+2. Try creating a bot with a target address
+3. The bot should be saved to the database
+4. You should see it in the dashboard list
+
+## Troubleshooting
+
+If you get errors:
+
+1. **Permission errors**:
+   - Try running `simple_copy_trading_bots.sql` (drops and recreates the table)
+   - Or run `fix_copy_trading_bots_permissions.sql` to fix permissions
+2. **Table already exists**: The simple script uses `DROP TABLE IF EXISTS` so it's safe to run
+3. **RLS errors**: The simple script uses permissive policies that should work for testing
+4. **Still getting permission denied**:
+   - Make sure you're signed in to your app
+   - Check that your Supabase environment variables are correct
+   - Try the simple setup script which grants permissions to all roles
+
+## Next Steps
+
+Once this basic setup works, you can:
+
+- Add more fields to the table
+- Create additional tables for trade history
+- Add more complex features
+
+But for now, this simple single-table approach should work for basic bot creation and management.
