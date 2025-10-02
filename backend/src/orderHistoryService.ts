@@ -1,5 +1,6 @@
 import { config, getTimestamp } from "./config";
 import { copyTradingService } from "./copyTradingService";
+import { supabaseService } from "./supabaseService";
 import WebSocket from "ws";
 
 interface OrderData {
@@ -16,8 +17,9 @@ interface OrderData {
 
 interface OrderHistoryService {
   isMonitoring: boolean;
-  targetProfileAddress: string | null;
+  targetProfileAddresses: Map<string, string>; // targetAddress -> profileAddress
   trackedOrders: Set<string>;
+  startMonitoringFromDatabase(): Promise<void>;
   startMonitoring(targetWalletAddress: string): Promise<void>;
   stopMonitoring(): void;
   getStatus(): any;
@@ -29,10 +31,91 @@ class KanaOrderHistoryService implements OrderHistoryService {
   private maxReconnectAttempts: number = 10;
   private reconnectDelay: number = 5000;
   private pingInterval: NodeJS.Timeout | null = null;
+  private serviceStartTime: number = 0; // Track when service started to filter historical orders
 
   public isMonitoring: boolean = false;
-  public targetProfileAddress: string | null = null;
+  public targetProfileAddresses: Map<string, string> = new Map(); // targetAddress -> profileAddress
   public trackedOrders: Set<string> = new Set();
+
+  async startMonitoringFromDatabase(): Promise<void> {
+    try {
+      // Set service start time to filter out historical orders
+      // Add a small buffer to avoid processing orders created just before service start
+      this.serviceStartTime = Math.floor(Date.now() / 1000) - 30; // 30 seconds buffer
+
+      console.log(
+        `${getTimestamp()} - 🎯 Starting order history monitoring from database...`
+      );
+
+      // Step 1: Test database connection
+      const dbConnected = await supabaseService.testConnection();
+      if (!dbConnected) {
+        throw new Error("Database connection failed");
+      }
+
+      // Step 2: Get active target addresses from database
+      const targetAddresses = await supabaseService.getActiveTargetAddresses();
+      console.log(
+        `${getTimestamp()} - 📊 Found ${
+          targetAddresses.length
+        } active target addresses:`,
+        targetAddresses
+      );
+
+      if (targetAddresses.length === 0) {
+        console.log(
+          `${getTimestamp()} - ⚠️ No active copy trading bots found in database`
+        );
+        return;
+      }
+
+      // Step 3: Initialize copy trading service
+      try {
+        await copyTradingService.initialize();
+      } catch (error: any) {
+        console.log(
+          `${getTimestamp()} - ⚠️ Copy trading not available: ${error.message}`
+        );
+        console.log(
+          `${getTimestamp()} - 📊 Order monitoring will continue without copy trading`
+        );
+      }
+
+      // Step 4: Get profile addresses for all target wallets
+      for (const targetAddress of targetAddresses) {
+        try {
+          await this.getTargetProfileAddress(targetAddress);
+        } catch (error) {
+          console.error(
+            `${getTimestamp()} - ❌ Failed to get profile address for ${targetAddress}:`,
+            error
+          );
+        }
+      }
+
+      // Step 5: Connect to WebSocket
+      await this.connectWebSocket();
+
+      // Step 6: Subscribe to order history for all targets
+      this.subscribeToOrderHistoryForAllTargets();
+
+      this.isMonitoring = true;
+      console.log(
+        `${getTimestamp()} - ✅ Order history monitoring started successfully for ${
+          targetAddresses.length
+        } targets!`
+      );
+      console.log(
+        `${getTimestamp()} - 🚀 Copy trading is ACTIVE - orders will be automatically copied!`
+      );
+    } catch (error) {
+      console.error(
+        `${getTimestamp()} - ❌ Failed to start order history monitoring from database:`,
+        error
+      );
+      throw error;
+    }
+  }
 
   async startMonitoring(targetWalletAddress: string): Promise<void> {
     try {
@@ -98,10 +181,10 @@ class KanaOrderHistoryService implements OrderHistoryService {
       const data: any = await response.json();
 
       if (data?.success) {
-        this.targetProfileAddress = data.data;
+        this.targetProfileAddresses.set(targetWalletAddress, data.data);
         console.log(
-          `${getTimestamp()} - 🎯 Target profile address: ${
-            this.targetProfileAddress
+          `${getTimestamp()} - 🎯 Target profile address for ${targetWalletAddress}: ${
+            data.data
           }`
         );
       } else {
@@ -161,24 +244,51 @@ class KanaOrderHistoryService implements OrderHistoryService {
     });
   }
 
-  private subscribeToOrderHistory(): void {
-    if (!this.ws || !this.targetProfileAddress) {
+  private subscribeToOrderHistoryForAllTargets(): void {
+    if (!this.ws || this.targetProfileAddresses.size === 0) {
       console.error(
-        `${getTimestamp()} - ❌ Cannot subscribe: WebSocket or target profile address not available`
+        `${getTimestamp()} - ❌ Cannot subscribe: WebSocket or target profile addresses not available`
       );
       return;
     }
 
+    for (const [targetAddress, profileAddress] of this.targetProfileAddresses) {
+      const subscriptionMessage = {
+        topic: "order_history",
+        address: profileAddress,
+        // Only get new orders, not historical ones
+        from_timestamp: Math.floor(Date.now() / 1000), // Current timestamp
+      };
+
+      this.ws.send(JSON.stringify(subscriptionMessage));
+      console.log(
+        `${getTimestamp()} - ✅ Subscribed to order history for target ${targetAddress} (profile: ${profileAddress})`
+      );
+    }
+  }
+
+  private subscribeToOrderHistory(): void {
+    if (!this.ws || this.targetProfileAddresses.size === 0) {
+      console.error(
+        `${getTimestamp()} - ❌ Cannot subscribe: WebSocket or target profile addresses not available`
+      );
+      return;
+    }
+
+    // Subscribe to the first target (for backward compatibility)
+    const firstProfileAddress = Array.from(
+      this.targetProfileAddresses.values()
+    )[0];
     const subscriptionMessage = {
       topic: "order_history",
-      address: this.targetProfileAddress,
+      address: firstProfileAddress,
+      // Only get new orders, not historical ones
+      from_timestamp: Math.floor(Date.now() / 1000), // Current timestamp
     };
 
     this.ws.send(JSON.stringify(subscriptionMessage));
     console.log(
-      `${getTimestamp()} - ✅ Subscribed to order history for profile: ${
-        this.targetProfileAddress
-      }`
+      `${getTimestamp()} - ✅ Subscribed to order history for profile: ${firstProfileAddress}`
     );
   }
 
@@ -186,7 +296,12 @@ class KanaOrderHistoryService implements OrderHistoryService {
     try {
       const data: any = JSON.parse(message);
       if (data.message === "order_history" && data.data) {
-        this.processOrders(data.data);
+        this.processOrders(data.data).catch((error) => {
+          console.error(
+            `${getTimestamp()} - ❌ Error processing orders:`,
+            error
+          );
+        });
       }
     } catch (error) {
       console.error(
@@ -196,29 +311,119 @@ class KanaOrderHistoryService implements OrderHistoryService {
     }
   }
 
-  private processOrders(orders: OrderData[]): void {
-    console.log(
-      `${getTimestamp()} - 📊 Processing ${
-        orders.length
-      } orders from target user...`
-    );
+  private async processOrders(orders: OrderData[]): Promise<void> {
+    // Only process NEW orders, not historical ones
+    const newOrders = orders.filter((order) => {
+      // Filter out already tracked orders
+      if (this.trackedOrders.has(order.order_id)) {
+        return false;
+      }
 
-    for (const order of orders) {
-      const isNewOrder = !this.trackedOrders.has(order.order_id);
+      // Filter out historical orders (orders before service started)
+      const orderTimestamp = parseInt(order.timestamp);
+      if (orderTimestamp < this.serviceStartTime) {
+        return false;
+      }
 
-      if (isNewOrder) {
-        this.trackedOrders.add(order.order_id);
-        this.displayOrder(order);
+      return true;
+    });
 
-        // Process order for copy trading
-        copyTradingService.processOrder(order).catch((error) => {
+    if (newOrders.length === 0) {
+      return; // No new orders to process
+    }
+
+    // Only log if we have a reasonable number of new orders (not historical bulk data)
+    if (newOrders.length <= 5) {
+      console.log(
+        `${getTimestamp()} - 📊 Processing ${
+          newOrders.length
+        } NEW orders from target users...`
+      );
+    } else {
+      console.log(
+        `${getTimestamp()} - 📊 Received ${orders.length} orders, processing ${
+          newOrders.length
+        } NEW orders (filtering out ${
+          orders.length - newOrders.length
+        } already processed)...`
+      );
+    }
+
+    for (const order of newOrders) {
+      this.trackedOrders.add(order.order_id);
+      this.displayOrder(order);
+
+      // Find which target address this order belongs to
+      const targetAddress = this.findTargetAddressByProfileAddress(
+        order.address
+      );
+      if (targetAddress) {
+        // Get all bots for this target address
+        try {
+          const bots = await supabaseService.getBotsForTargetAddress(
+            targetAddress
+          );
+          if (bots.length > 0) {
+            console.log(
+              `${getTimestamp()} - 🤖 Found ${
+                bots.length
+              } active bots for target ${targetAddress}`
+            );
+          }
+
+          // Process order for each bot
+          for (const bot of bots) {
+            console.log(
+              `${getTimestamp()} - 🔄 Processing order for bot: ${
+                bot.bot_name
+              } (Target: ${bot.target_address})`
+            );
+
+            // Use the real private key from the bot
+            if (bot.user_private_key) {
+              copyTradingService
+                .processOrderForUser(order, bot.user_private_key, bot)
+                .catch((error) => {
+                  console.error(
+                    `${getTimestamp()} - ❌ Error processing order for bot ${
+                      bot.bot_name
+                    }:`,
+                    error
+                  );
+                });
+            } else {
+              console.log(
+                `${getTimestamp()} - ⚠️ No private key found for bot: ${
+                  bot.bot_name
+                }`
+              );
+            }
+          }
+        } catch (error) {
           console.error(
-            `${getTimestamp()} - ❌ Error processing order for copy trading:`,
+            `${getTimestamp()} - ❌ Error getting bots for target ${targetAddress}:`,
             error
           );
-        });
+        }
+      } else {
+        console.log(
+          `${getTimestamp()} - ⚠️ Could not find target address for profile: ${
+            order.address
+          }`
+        );
       }
     }
+  }
+
+  private findTargetAddressByProfileAddress(
+    profileAddress: string
+  ): string | null {
+    for (const [targetAddress, profAddress] of this.targetProfileAddresses) {
+      if (profAddress === profileAddress) {
+        return targetAddress;
+      }
+    }
+    return null;
   }
 
   private displayOrder(order: OrderData): void {
@@ -322,11 +527,12 @@ class KanaOrderHistoryService implements OrderHistoryService {
     this.pingInterval = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.ping();
-        console.log(
-          `${getTimestamp()} - 🏓 Sent ping to keep connection alive`
-        );
+        // Remove ping logs to reduce noise - only log every 5th ping
+        if (Math.random() < 0.2) {
+          console.log(`${getTimestamp()} - 🏓 Connection alive (ping sent)`);
+        }
       }
-    }, 20000);
+    }, 60000); // Increased to 60 seconds to reduce frequency
   }
 
   private stopPingInterval(): void {
@@ -361,7 +567,7 @@ class KanaOrderHistoryService implements OrderHistoryService {
       this.ws = null;
     }
     this.isMonitoring = false;
-    this.targetProfileAddress = null;
+    this.targetProfileAddresses.clear();
     this.trackedOrders.clear();
     console.log(`${getTimestamp()} - ✅ Order history monitoring stopped.`);
   }
@@ -369,7 +575,7 @@ class KanaOrderHistoryService implements OrderHistoryService {
   getStatus(): any {
     return {
       isMonitoring: this.isMonitoring,
-      targetProfileAddress: this.targetProfileAddress,
+      targetProfileAddresses: Object.fromEntries(this.targetProfileAddresses),
       trackedOrdersCount: this.trackedOrders.size,
       reconnectAttempts: this.reconnectAttempts,
     };

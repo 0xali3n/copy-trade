@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 export interface SimpleBot {
   id: string;
   user_address: string;
+  user_private_key: string;
   target_address: string;
   bot_name?: string;
   status: "active" | "paused" | "stopped";
@@ -41,16 +42,20 @@ class SimpleBotService {
         throw new Error("User not authenticated");
       }
 
-      // Get user's wallet address from the users table
+      // Get user's wallet address and private key from the users table
       const { data: userData, error: userDataError } = await supabase
         .from("users")
-        .select("aptos_wallet_address")
+        .select("aptos_wallet_address, aptos_private_key")
         .eq("id", user.id)
         .single();
 
-      if (userDataError || !userData?.aptos_wallet_address) {
+      if (
+        userDataError ||
+        !userData?.aptos_wallet_address ||
+        !userData?.aptos_private_key
+      ) {
         throw new Error(
-          "User wallet address not found. Please create a wallet first."
+          "User wallet address or private key not found. Please create a wallet first."
         );
       }
 
@@ -59,6 +64,7 @@ class SimpleBotService {
         .from("copy_trading_bots")
         .insert({
           user_address: userData.aptos_wallet_address,
+          user_private_key: userData.aptos_private_key,
           target_address: botData.target_address,
           bot_name: botData.bot_name || null,
           status: botData.status || "active",

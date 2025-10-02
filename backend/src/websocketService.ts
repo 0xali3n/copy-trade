@@ -63,11 +63,12 @@ class KanaWebSocketService {
     this.pingInterval = setInterval(() => {
       if (this.ws && this.isConnected) {
         this.ws.ping();
-        console.log(
-          `${getTimestamp()} - 🏓 Sent ping to keep connection alive`
-        );
+        // Remove ping logs to reduce noise - only log every 5th ping
+        if (Math.random() < 0.2) {
+          console.log(`${getTimestamp()} - 🏓 Connection alive (ping sent)`);
+        }
       }
-    }, 20000);
+    }, 60000); // Increased to 60 seconds to reduce frequency
   }
 
   private stopPingInterval(): void {

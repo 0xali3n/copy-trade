@@ -17,6 +17,7 @@
   "license": "MIT",
   "dependencies": {
     "@aptos-labs/ts-sdk": "^5.1.0",
+    "@supabase/supabase-js": "^2.58.0",
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

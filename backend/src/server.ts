@@ -47,7 +47,7 @@ app.get("/api/status", (req, res) => {
     orderHistory: orderHistoryService.getStatus(),
     copyTrading: copyTradingService.getStatus(),
     config: {
-      targetWalletAddress: config.targetWalletAddress || "not configured",
+      databaseDriven: true,
       aptosPrivateKeyConfigured: !!config.aptosPrivateKeyHex,
     },
   });
@@ -63,22 +63,14 @@ async function initializeServices() {
       await websocketService.connect();
       console.log(`${getTimestamp()} - ✅ WebSocket connected to Kana Labs`);
 
-      // Start order history monitoring if target wallet is configured
-      if (config.targetWalletAddress) {
-        console.log(
-          `${getTimestamp()} - 🎯 Starting order history monitoring...`
-        );
-        await orderHistoryService.startMonitoring(config.targetWalletAddress);
-        console.log(
-          `${getTimestamp()} - ✅ Order history monitoring started for: ${
-            config.targetWalletAddress
-          }`
-        );
-      } else {
-        console.log(
-          `${getTimestamp()} - ⚠️  No target wallet configured - set TARGET_WALLET_ADDRESS to monitor order history`
-        );
-      }
+      // Start order history monitoring from database
+      console.log(
+        `${getTimestamp()} - 🎯 Starting order history monitoring from database...`
+      );
+      await orderHistoryService.startMonitoringFromDatabase();
+      console.log(
+        `${getTimestamp()} - ✅ Order history monitoring started from database`
+      );
     } else {
       console.log(
         `${getTimestamp()} - ⚠️  Services not initialized - missing KANA_API_KEY`
