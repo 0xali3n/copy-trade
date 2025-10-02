@@ -24,6 +24,27 @@ export interface User {
   created_at: string;
 }
 
+export interface CopyTradingTrade {
+  id: string;
+  user_wallet_address: string;
+  bot_id: string;
+  symbol: string;
+  market_id: string;
+  action: "BUY" | "SELL" | "EXIT_LONG" | "EXIT_SHORT";
+  order_type: "MARKET" | "LIMIT" | "STOP";
+  leverage: number;
+  price: number;
+  quantity: number;
+  transaction_hash?: string;
+  order_id?: string;
+  target_address?: string;
+  status: "PENDING" | "SUCCESS" | "FAILED";
+  created_at: string;
+  updated_at: string;
+  pnl?: number;
+  fees?: number;
+}
+
 class SupabaseService {
   /**
    * Get all active copy trading bots
@@ -171,6 +192,44 @@ class SupabaseService {
     } catch (error) {
       console.error("Database connection test failed:", error);
       return false;
+    }
+  }
+
+  /**
+   * Store a copy trading trade in the database
+   */
+  async storeTrade(tradeData: {
+    user_wallet_address: string;
+    bot_id: string;
+    symbol: string;
+    market_id: string;
+    action: "BUY" | "SELL" | "EXIT_LONG" | "EXIT_SHORT";
+    order_type: "MARKET" | "LIMIT" | "STOP";
+    leverage: number;
+    price: number;
+    quantity: number;
+    transaction_hash?: string;
+    order_id?: string;
+    target_address?: string;
+    status?: "PENDING" | "SUCCESS" | "FAILED";
+  }): Promise<CopyTradingTrade | null> {
+    try {
+      const { data, error } = await supabase
+        .from("copy_trading_trades")
+        .insert([tradeData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error storing trade:", error);
+        return null;
+      }
+
+      console.log(`✅ Trade stored successfully: ${data.id}`);
+      return data;
+    } catch (error) {
+      console.error("Error storing trade:", error);
+      return null;
     }
   }
 }

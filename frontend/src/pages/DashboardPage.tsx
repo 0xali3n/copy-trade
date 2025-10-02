@@ -13,9 +13,14 @@ import {
   SimpleBot,
   CreateBotData,
 } from "../services/simpleBotService";
+import { TradesService, TradeStats } from "../services/tradesService";
+import { useAuth } from "../contexts/AuthContext";
+import RecentTrades from "../components/RecentTrades";
 
 const DashboardPage: React.FC = () => {
+  const { user } = useAuth();
   const [tradingBots, setTradingBots] = useState<SimpleBot[]>([]);
+  const [tradeStats, setTradeStats] = useState<TradeStats | null>(null);
   const [isCreateBotOpen, setIsCreateBotOpen] = useState(false);
   const [botName, setBotName] = useState("");
   const [targetAddress, setTargetAddress] = useState("");
@@ -23,10 +28,11 @@ const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load bots from database on component mount
+  // Load bots and trade stats from database on component mount
   useEffect(() => {
     loadBots();
-  }, []);
+    loadTradeStats();
+  }, [user?.aptos_wallet_address]);
 
   const loadBots = async () => {
     try {
@@ -37,6 +43,19 @@ const DashboardPage: React.FC = () => {
       setError(err instanceof Error ? err.message : "Failed to load bots");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTradeStats = async () => {
+    if (!user?.aptos_wallet_address) return;
+
+    try {
+      const stats = await TradesService.getUserTradeStats(
+        user.aptos_wallet_address
+      );
+      setTradeStats(stats);
+    } catch (err) {
+      console.error("Error loading trade stats:", err);
     }
   };
 
@@ -52,6 +71,7 @@ const DashboardPage: React.FC = () => {
 
         const newBot = await simpleBotService.createBot(botData);
         setTradingBots([newBot, ...tradingBots]);
+        await loadTradeStats();
         setBotName("");
         setTargetAddress("");
         setBotStatus("active");
@@ -85,6 +105,7 @@ const DashboardPage: React.FC = () => {
     try {
       await simpleBotService.deleteBot(botId);
       setTradingBots((bots) => bots.filter((bot) => bot.id !== botId));
+      await loadTradeStats();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete bot");
     }
@@ -127,12 +148,25 @@ const DashboardPage: React.FC = () => {
 
       {/* Dashboard Header */}
       <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-          Trading Dashboard
-        </h2>
-        <p className="text-gray-600 text-lg">
-          Monitor your bots, analyze performance, and manage your trades
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+              Trading Dashboard
+            </h2>
+            <p className="text-gray-600 text-lg">
+              Monitor your bots, analyze performance, and manage your trades
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              loadBots();
+              loadTradeStats();
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+          >
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Stats */}
@@ -141,11 +175,25 @@ const DashboardPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Total Profit</p>
-              <p className="text-gray-900 font-bold text-2xl">$0.00</p>
+              <p
+                className={`font-bold text-2xl ${
+                  tradeStats?.totalPnl && tradeStats.totalPnl >= 0
+                    ? "text-green-600"
+                    : tradeStats?.totalPnl && tradeStats.totalPnl < 0
+                    ? "text-red-600"
+                    : "text-gray-900"
+                }`}
+              >
+                {tradeStats
+                  ? `${
+                      tradeStats.totalPnl >= 0 ? "+" : ""
+                    }$${tradeStats.totalPnl.toFixed(2)}`
+                  : "$0.00"}
+              </p>
               <p className="text-gray-500 text-sm">
-                {activeBots === 0
+                {tradeStats?.totalTrades === 0
                   ? "Start trading to see profits"
-                  : "From active bots"}
+                  : "From all trades"}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -175,9 +223,13 @@ const DashboardPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Total Trades</p>
-              <p className="text-gray-900 font-bold text-2xl">0</p>
+              <p className="text-gray-900 font-bold text-2xl">
+                {tradeStats?.totalTrades || 0}
+              </p>
               <p className="text-purple-600 text-sm">
-                {activeBots === 0 ? "No trades yet" : "From active bots"}
+                {tradeStats?.totalTrades === 0
+                  ? "No trades yet"
+                  : `${tradeStats?.successfulTrades || 0} successful`}
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -305,29 +357,7 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Recent Trades */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-gray-900 font-semibold text-xl">
-              Recent Trades
-            </h3>
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors flex items-center space-x-1">
-              <span>View All</span>
-              <FaEye className="w-3 h-3" />
-            </button>
-          </div>
-
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaBullseye className="text-gray-400 text-2xl" />
-            </div>
-            <h4 className="text-gray-900 font-semibold text-lg mb-2">
-              No trades yet
-            </h4>
-            <p className="text-gray-500">
-              Your bot trades will appear here once they start executing
-            </p>
-          </div>
-        </div>
+        <RecentTrades limit={5} showViewAll={true} />
 
         {/* Performance Chart */}
         <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm p-4">

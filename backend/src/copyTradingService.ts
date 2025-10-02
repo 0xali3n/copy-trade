@@ -243,13 +243,44 @@ class CopyTradingService {
           } position`
         );
 
-        // Update bot performance metrics (simplified for now)
+        // Store the successful trade in database
+        await this.storeTradeInDatabase({
+          user_wallet_address: userAccount.accountAddress.toString(),
+          bot_id: bot.id,
+          symbol: this.getMarketName(order.market_id),
+          market_id: order.market_id,
+          action: this.getTradeAction(orderInfo, direction),
+          order_type: isMarketOrder ? "MARKET" : "LIMIT",
+          leverage: order.leverage,
+          price: parseFloat(order.price),
+          quantity: copySize,
+          transaction_hash: result.transactionHash,
+          order_id: order.order_id,
+          target_address: bot.target_address,
+          status: "SUCCESS",
+        });
+
         console.log(`✅ Trade successful for bot ${bot.bot_name}`);
       } else {
         console.log(`❌ COPY ORDER FAILED FOR USER:`);
         console.log(`   Error: ${result.error}`);
 
-        // Update bot performance metrics (simplified for now)
+        // Store the failed trade in database
+        await this.storeTradeInDatabase({
+          user_wallet_address: userAccount.accountAddress.toString(),
+          bot_id: bot.id,
+          symbol: this.getMarketName(order.market_id),
+          market_id: order.market_id,
+          action: this.getTradeAction(orderInfo, direction),
+          order_type: isMarketOrder ? "MARKET" : "LIMIT",
+          leverage: order.leverage,
+          price: parseFloat(order.price),
+          quantity: copySize,
+          order_id: order.order_id,
+          target_address: bot.target_address,
+          status: "FAILED",
+        });
+
         console.log(`❌ Trade failed for bot ${bot.bot_name}`);
       }
     } catch (error) {
@@ -520,6 +551,63 @@ class CopyTradingService {
   }
 
   // Removed size multiplier and limits - using exact copy only
+
+  /**
+   * Store trade in database
+   */
+  private async storeTradeInDatabase(tradeData: {
+    user_wallet_address: string;
+    bot_id: string;
+    symbol: string;
+    market_id: string;
+    action: "BUY" | "SELL" | "EXIT_LONG" | "EXIT_SHORT";
+    order_type: "MARKET" | "LIMIT" | "STOP";
+    leverage: number;
+    price: number;
+    quantity: number;
+    transaction_hash?: string;
+    order_id?: string;
+    target_address?: string;
+    status: "PENDING" | "SUCCESS" | "FAILED";
+  }): Promise<void> {
+    try {
+      const storedTrade = await supabaseService.storeTrade(tradeData);
+      if (storedTrade) {
+        console.log(
+          `${getTimestamp()} - 💾 Trade stored in database: ${storedTrade.id}`
+        );
+      } else {
+        console.log(`${getTimestamp()} - ⚠️ Failed to store trade in database`);
+      }
+    } catch (error) {
+      console.error(
+        `${getTimestamp()} - ❌ Error storing trade in database:`,
+        error
+      );
+    }
+  }
+
+  /**
+   * Get trade action based on order info and direction
+   */
+  private getTradeAction(
+    orderInfo: {
+      isBuy: boolean;
+      isSell: boolean;
+      isExit: boolean;
+      isLong: boolean;
+      isShort: boolean;
+    },
+    direction: boolean
+  ): "BUY" | "SELL" | "EXIT_LONG" | "EXIT_SHORT" {
+    if (direction) {
+      // Closing position
+      return orderInfo.isLong ? "EXIT_LONG" : "EXIT_SHORT";
+    } else {
+      // Opening position
+      return orderInfo.isLong ? "BUY" : "SELL";
+    }
+  }
 
   getStatus(): any {
     return {

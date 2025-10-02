@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { FaHome, FaChartBar, FaCog } from "react-icons/fa";
+import { FaHome, FaChartBar, FaCog, FaHistory } from "react-icons/fa";
 
 const LeftSidebar: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -11,6 +11,7 @@ const LeftSidebar: React.FC = () => {
     ? [
         { name: "Home", path: "/", icon: FaHome },
         { name: "Dashboard", path: "/dashboard", icon: FaChartBar },
+        { name: "Trades", path: "/trades", icon: FaHistory },
         { name: "Settings", path: "/settings", icon: FaCog },
       ]
     : [
@@ -19,6 +20,12 @@ const LeftSidebar: React.FC = () => {
           name: "Dashboard",
           path: "/dashboard",
           icon: FaChartBar,
+          requiresAuth: true,
+        },
+        {
+          name: "Trades",
+          path: "/trades",
+          icon: FaHistory,
           requiresAuth: true,
         },
         {

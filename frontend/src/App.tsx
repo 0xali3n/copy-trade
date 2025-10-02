@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
 import SettingsPage from "./pages/SettingsPage";
+import TradesPage from "./pages/TradesPage";
 
 const App: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -37,6 +38,14 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trades"
+            element={
+              <ProtectedRoute>
+                <TradesPage />
               </ProtectedRoute>
             }
           />
