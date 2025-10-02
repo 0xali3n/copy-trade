@@ -1,8 +1,4 @@
-import {
-  Ed25519PrivateKey,
-  Ed25519PublicKey,
-  Account,
-} from "@aptos-labs/ts-sdk";
+import { Ed25519PrivateKey, Account } from "@aptos-labs/ts-sdk";
 
 export interface WalletInfo {
   address: string;

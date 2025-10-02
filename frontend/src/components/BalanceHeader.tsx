@@ -57,10 +57,10 @@ const BalanceHeader: React.FC<BalanceHeaderProps> = ({
     <div className="flex items-center space-x-4">
       {/* Trading Balance */}
       <div className="text-right">
-        <div className="text-xs text-gray-400 uppercase tracking-wide">
+        <div className="text-xs text-gray-500 uppercase tracking-wide">
           Trading Balance
         </div>
-        <div className="text-lg font-semibold text-white">
+        <div className="text-lg font-semibold text-gray-900">
           {loading ? (
             <div className="animate-pulse">...</div>
           ) : tradingBalance !== null ? (
@@ -75,7 +75,7 @@ const BalanceHeader: React.FC<BalanceHeaderProps> = ({
       <button
         onClick={loadTradingBalance}
         disabled={loading}
-        className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white p-2 rounded-lg transition-colors"
+        className="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 p-2 rounded-lg transition-colors"
         title="Refresh balance"
       >
         <svg

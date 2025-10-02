@@ -20,6 +20,16 @@ export interface User {
   aptos_private_key?: string;
   created_at?: string;
   last_login?: string;
+  // New settings fields
+  display_name?: string;
+  bio?: string;
+  twitter_username?: string;
+  twitter_connected?: boolean;
+  twitter_user_id?: string;
+  theme?: string;
+  notifications_enabled?: boolean;
+  email_notifications?: boolean;
+  settings_updated_at?: string;
 }
 
 export interface AuthContextType {
@@ -78,23 +88,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         if (mounted) {
-          console.log("✅ Initial session found, setting user");
-          // Set user from session
-          const sessionUser: User = {
-            id: session.user.id,
-            email: session.user.email || "",
-            full_name: session.user.user_metadata?.full_name,
-            avatar_url: session.user.user_metadata?.avatar_url,
-            google_id: session.user.user_metadata?.google_id,
-          };
-          console.log("🔍 Setting session user:", sessionUser);
-          setUser(sessionUser);
-          setIsLoading(false); // Stop loading immediately after setting user
+          console.log("✅ Initial session found, loading from database");
 
-          // Save user to database (don't wait for this)
+          // Load user data from database first, don't set session user immediately
           loadUserProfile(session.user).catch((error) => {
             console.error("❌ Error in loadUserProfile:", error);
+            // Fallback to session user if database load fails
+            const sessionUser: User = {
+              id: session.user.id,
+              email: session.user.email || "",
+              full_name: session.user.user_metadata?.full_name,
+              avatar_url: session.user.user_metadata?.avatar_url,
+              google_id: session.user.user_metadata?.google_id,
+            };
+            console.log("⚠️ Using fallback session user in init:", sessionUser);
+            setUser(sessionUser);
           });
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("❌ AuthContext: Auth initialization error:", error);
@@ -120,20 +130,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!mounted) return;
 
       if (event === "SIGNED_IN" && session?.user) {
-        console.log("✅ User signed in, setting session user");
-        const sessionUser: User = {
-          id: session.user.id,
-          email: session.user.email || "",
-          full_name: session.user.user_metadata?.full_name,
-          avatar_url: session.user.user_metadata?.avatar_url,
-          google_id: session.user.user_metadata?.google_id,
-        };
-        console.log("🔍 Setting session user:", sessionUser);
-        setUser(sessionUser);
+        console.log("✅ User signed in, loading from database");
 
-        // Save user to database (don't wait for this)
+        // Load user data from database instead of just auth session
         loadUserProfile(session.user).catch((error) => {
           console.error("❌ Error in loadUserProfile:", error);
+          // Fallback to session user if database load fails
+          const sessionUser: User = {
+            id: session.user.id,
+            email: session.user.email || "",
+            full_name: session.user.user_metadata?.full_name,
+            avatar_url: session.user.user_metadata?.avatar_url,
+            google_id: session.user.user_metadata?.google_id,
+          };
+          setUser(sessionUser);
         });
         setIsLoading(false);
       } else if (event === "SIGNED_OUT") {
@@ -155,7 +165,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log("🔄 Loading user profile for:", supabaseUser.email);
 
-      // Create user data
+      // First, try to load existing user from database
+      const { data: existingUser, error: fetchError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", supabaseUser.id)
+        .single();
+
+      console.log("🔍 Database fetch result:", {
+        hasData: !!existingUser,
+        error: fetchError?.message,
+        userId: supabaseUser.id,
+      });
+
+      if (existingUser && !fetchError) {
+        console.log("✅ Found existing user in database:", {
+          id: existingUser.id,
+          email: existingUser.email,
+          full_name: existingUser.full_name,
+          avatar_url: existingUser.avatar_url,
+          hasWallet: !!existingUser.aptos_wallet_address,
+        });
+
+        // Use the database user data (includes uploaded avatar_url and updated full_name)
+        console.log("🔄 Setting user from database data:", existingUser);
+        setUser(existingUser);
+
+        // Update last_login
+        await supabase
+          .from("users")
+          .update({ last_login: new Date().toISOString() })
+          .eq("id", supabaseUser.id);
+
+        // Auto-generate wallet if user doesn't have one
+        if (!existingUser.aptos_wallet_address) {
+          console.log("🔄 User has no wallet, auto-generating...");
+          generateWalletForUser(existingUser);
+        } else {
+          console.log("✅ User wallet exists");
+        }
+        return;
+      }
+
+      // If database fetch failed or no user found
+      if (fetchError) {
+        console.error("❌ Error fetching user from database:", fetchError);
+        console.log("⚠️ Falling back to creating new user with Google data");
+      } else {
+        console.log("🔄 No existing user found, creating new user");
+      }
       const userData = {
         id: supabaseUser.id,
         email: supabaseUser.email || "",
@@ -207,13 +265,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } else if (error) {
         console.error("❌ Error saving user profile:", error);
-        // Even if save fails, keep the session user
-        console.log("⚠️ Keeping session user data");
+        // Fallback to session user
+        const sessionUser: User = {
+          id: supabaseUser.id,
+          email: supabaseUser.email || "",
+          full_name: supabaseUser.user_metadata?.full_name,
+          avatar_url: supabaseUser.user_metadata?.avatar_url,
+          google_id: supabaseUser.user_metadata?.google_id,
+        };
+        console.log("⚠️ Using fallback session user:", sessionUser);
+        setUser(sessionUser);
       }
     } catch (error) {
       console.error("❌ Error in loadUserProfile:", error);
-      // Even if there's an error, keep the session user
-      console.log("⚠️ Keeping session user data");
+      // Fallback to session user
+      const sessionUser: User = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || "",
+        full_name: supabaseUser.user_metadata?.full_name,
+        avatar_url: supabaseUser.user_metadata?.avatar_url,
+        google_id: supabaseUser.user_metadata?.google_id,
+      };
+      console.log("⚠️ Using catch fallback session user:", sessionUser);
+      setUser(sessionUser);
     }
   };
 

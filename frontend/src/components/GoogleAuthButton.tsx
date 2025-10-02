@@ -2,45 +2,36 @@ import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 const GoogleAuthButton: React.FC = () => {
-  const { user, isAuthenticated, isLoading, signInWithGoogle, signOut } =
-    useAuth();
+  const { user, isAuthenticated, isLoading, signInWithGoogle } = useAuth();
 
   if (isLoading) {
     return (
       <div className="flex items-center space-x-2">
-        <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-        <span className="text-white text-sm">Loading...</span>
+        <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+        <span className="text-gray-600 text-sm">Loading...</span>
       </div>
     );
   }
 
   if (isAuthenticated && user) {
     return (
-      <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2">
-          {user.avatar_url ? (
-            <img
-              src={user.avatar_url}
-              alt={user.full_name || user.email}
-              className="w-8 h-8 rounded-full border border-white/20"
-            />
-          ) : (
-            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-semibold">
-                {user.email?.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
-          <span className="text-white text-sm hidden sm:block">
-            {user.full_name || user.email}
-          </span>
-        </div>
-        <button
-          onClick={signOut}
-          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200"
-        >
-          Sign Out
-        </button>
+      <div className="flex items-center space-x-2">
+        {user.avatar_url ? (
+          <img
+            src={user.avatar_url}
+            alt={user.full_name || user.email}
+            className="w-8 h-8 rounded-full border border-gray-200"
+          />
+        ) : (
+          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+            <span className="text-blue-600 text-sm font-semibold">
+              {user.email?.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
+        <span className="text-gray-700 text-sm hidden sm:block">
+          {user.full_name || user.email}
+        </span>
       </div>
     );
   }
