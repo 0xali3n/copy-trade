@@ -2,6 +2,14 @@ import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 import TradingFeed from "../components/TradingFeed";
 import MarketData from "../components/MarketData";
+import {
+  Zap,
+  BarChart3,
+  Shield,
+  TrendingUp,
+  Users,
+  Target,
+} from "lucide-react";
 
 const HomePage: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
@@ -24,73 +32,37 @@ const HomePage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-              <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                <svg
-                  className="w-6 h-6 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300">
+              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center mb-4 mx-auto shadow-lg">
+                <Zap className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">
                 Real-time
               </h3>
-              <p className="text-gray-300">
+              <p className="text-gray-300 text-sm leading-relaxed">
                 WebSocket-powered instant order detection and execution
               </p>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-              <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                <svg
-                  className="w-6 h-6 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300">
+              <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mb-4 mx-auto shadow-lg">
+                <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">
                 All Orders
               </h3>
-              <p className="text-gray-300">
+              <p className="text-gray-300 text-sm leading-relaxed">
                 Copy all types of orders including market, limit, and stop
                 orders
               </p>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-              <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                <svg
-                  className="w-6 h-6 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mb-4 mx-auto shadow-lg">
+                <Shield className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Secure</h3>
-              <p className="text-gray-300">
+              <p className="text-gray-300 text-sm leading-relaxed">
                 Bank-grade security with encrypted API keys and secure
                 authentication
               </p>
@@ -102,18 +74,64 @@ const HomePage: React.FC = () => {
   }
 
   return (
-    <div>
+    <div className="space-y-8">
       {/* Market Data Section */}
       <MarketData />
 
       {/* Welcome Section */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-          Welcome back, {user?.full_name || "Trader"}!
-        </h2>
-        <p className="text-gray-600 text-lg">
-          Here's what's happening in the trading community
-        </p>
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100">
+        <div className="flex items-center space-x-4 mb-4">
+          <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">
+              Welcome back, {user?.full_name || "Trader"}!
+            </h2>
+            <p className="text-gray-600 text-lg">
+              Here's what's happening in the trading community
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Active Trades</p>
+                <p className="text-lg font-semibold text-gray-900">12</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Users className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Following</p>
+                <p className="text-lg font-semibold text-gray-900">8</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Target className="w-4 h-4 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Win Rate</p>
+                <p className="text-lg font-semibold text-gray-900">78%</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Trading Feed */}

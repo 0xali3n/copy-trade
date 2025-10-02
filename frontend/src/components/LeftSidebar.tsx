@@ -49,11 +49,16 @@ const LeftSidebar: React.FC = () => {
                   </span>
                 </div>
               )}
-              <div>
-                <h3 className="text-gray-900 font-semibold text-sm">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-gray-900 font-semibold text-sm truncate">
                   {user.full_name || "Trader"}
                 </h3>
-                <p className="text-gray-500 text-xs">{user.email}</p>
+                <p
+                  className="text-gray-500 text-xs truncate"
+                  title={user.email}
+                >
+                  {user.email}
+                </p>
               </div>
             </div>
           </div>
