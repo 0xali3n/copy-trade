@@ -144,7 +144,7 @@ export class KanaService {
     }
   }
 
-  // Deposit funds
+  // Deposit funds with gas optimization
   async deposit(amount: number): Promise<string> {
     if (!this.isInitialized || !this.account) {
       throw new Error("Kana service not initialized");
@@ -163,10 +163,14 @@ export class KanaService {
 
     console.log("[Kana] ✅ Deposit payload received");
 
-    // Step 2: Submit transaction
+    // Step 2: Submit transaction with gas optimization
     const transactionPayload = await this.aptos.transaction.build.simple({
       sender: this.account.accountAddress,
       data: payloadData.data,
+      options: {
+        maxGasAmount: 15000, // Limit max gas instead of auto-estimation
+        gasUnitPrice: 100, // Use lower gas price (100 octas)
+      },
     });
 
     const committedTxn = await this.aptos.transaction.signAndSubmitTransaction({

@@ -14,12 +14,14 @@
     "@aptos-labs/wallet-adapter-react": "^7.1.0",
     "@supabase/supabase-js": "^2.39.0",
     "@types/qrcode": "^1.5.5",
+    "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.20",
     "axios": "^1.7.7",
     "postcss": "^8.4.49",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^7.9.3",
     "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
