@@ -4,9 +4,13 @@ import { KanaService } from "../services/kana";
 
 interface BalanceHeaderProps {
   onDepositClick: () => void;
+  refreshTrigger?: number; // When this changes, refresh the balance
 }
 
-const BalanceHeader: React.FC<BalanceHeaderProps> = ({ onDepositClick }) => {
+const BalanceHeader: React.FC<BalanceHeaderProps> = ({
+  onDepositClick,
+  refreshTrigger,
+}) => {
   const { user } = useAuth();
   const [kana] = useState(() => new KanaService());
   const [tradingBalance, setTradingBalance] = useState<number | null>(null);
@@ -21,11 +25,23 @@ const BalanceHeader: React.FC<BalanceHeaderProps> = ({ onDepositClick }) => {
     }
   }, [user?.aptos_wallet_address, user?.aptos_private_key]);
 
+  // Refresh balance when refreshTrigger changes (e.g., when deposit popup closes)
+  useEffect(() => {
+    if (
+      refreshTrigger &&
+      user?.aptos_wallet_address &&
+      user?.aptos_private_key
+    ) {
+      loadTradingBalance();
+    }
+  }, [refreshTrigger]);
+
   const loadTradingBalance = async () => {
     setLoading(true);
     try {
-      const bal = await kana.getBalances();
-      setTradingBalance(bal.trading);
+      // Only fetch trading balance, not wallet balance (reduces API calls)
+      const tradingBal = await kana.getTradingBalance();
+      setTradingBalance(tradingBal);
     } catch (error) {
       console.error("Error loading trading balance:", error);
     } finally {

@@ -8,6 +8,7 @@ import DepositPopup from "./components/DepositPopup";
 const App: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
   const [isDepositPopupOpen, setIsDepositPopupOpen] = useState(false);
+  const [balanceRefreshTrigger, setBalanceRefreshTrigger] = useState(0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
@@ -24,6 +25,7 @@ const App: React.FC = () => {
             <div className="flex items-center space-x-4">
               <BalanceHeader
                 onDepositClick={() => setIsDepositPopupOpen(true)}
+                refreshTrigger={balanceRefreshTrigger}
               />
               <GoogleAuthButton />
             </div>
@@ -164,10 +166,15 @@ const App: React.FC = () => {
       {/* Deposit Popup */}
       <DepositPopup
         isOpen={isDepositPopupOpen}
-        onClose={() => setIsDepositPopupOpen(false)}
+        onClose={() => {
+          setIsDepositPopupOpen(false);
+          // Trigger balance refresh when popup closes
+          setBalanceRefreshTrigger((prev) => prev + 1);
+        }}
         onTransferComplete={() => {
-          // Refresh balance or show success message
-          console.log("Transfer completed successfully");
+          setIsDepositPopupOpen(false);
+          // Trigger balance refresh when transfer completes
+          setBalanceRefreshTrigger((prev) => prev + 1);
         }}
       />
     </div>
