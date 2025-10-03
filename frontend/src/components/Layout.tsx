@@ -23,10 +23,10 @@ const Layout: React.FC<LayoutProps> = ({ children, showSidebars = true }) => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">K</span>
+                <span className="text-white font-bold text-lg">S</span>
               </div>
               <h1 className="text-gray-900 text-xl font-semibold">
-                Kana Copy Trader
+                Social Trade
               </h1>
             </div>
             <div className="flex items-center space-x-4">

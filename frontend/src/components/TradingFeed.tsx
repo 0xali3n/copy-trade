@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { PostsService, Post, CreatePostData } from "../services/postsService";
 import { supabase } from "../lib/supabase";
+import { simpleBotService } from "../services/simpleBotService";
 import {
   Image,
   BarChart3,
@@ -94,6 +95,11 @@ const TradingFeed: React.FC = () => {
   const [cryptoPrices, setCryptoPrices] = useState<{ [key: string]: number }>(
     {}
   );
+  const [creatingBot, setCreatingBot] = useState<string | null>(null);
+  const [botCreationError, setBotCreationError] = useState<string | null>(null);
+  const [showBotCreationPopup, setShowBotCreationPopup] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<TradingPost | null>(null);
+  const [customBotName, setCustomBotName] = useState("");
 
   // Fetch real-time crypto prices (with rate limiting)
   const fetchCryptoPrices = async () => {
@@ -511,6 +517,63 @@ const TradingFeed: React.FC = () => {
     );
   };
 
+  // Handle starting a copy bot for a specific post - show popup
+  const handleStartCopyBot = (post: TradingPost) => {
+    if (!user) {
+      setBotCreationError("Please log in to start a copy bot");
+      return;
+    }
+
+    // Set the selected post and show popup
+    setSelectedPost(post);
+    setCustomBotName(
+      `Copy ${post.user.name} - ${new Date().toLocaleDateString()}`
+    );
+    setShowBotCreationPopup(true);
+    setBotCreationError(null);
+  };
+
+  // Handle creating the bot from the popup
+  const handleCreateBotFromPopup = async () => {
+    if (!selectedPost || !user) return;
+
+    try {
+      setCreatingBot(selectedPost.id);
+      setBotCreationError(null);
+
+      console.log("🤖 Creating copy bot for post:", {
+        postId: selectedPost.id,
+        targetAddress: selectedPost.user.walletAddress,
+        botName: customBotName,
+        userWallet: user.aptos_wallet_address,
+      });
+
+      // Create the bot
+      const newBot = await simpleBotService.createBot({
+        target_address: selectedPost.user.walletAddress,
+        bot_name: customBotName.trim() || undefined,
+        status: "active",
+      });
+
+      console.log("✅ Copy bot created successfully:", newBot);
+
+      // Close popup and show success message
+      setShowBotCreationPopup(false);
+      setSelectedPost(null);
+      setCustomBotName("");
+      alert(
+        `Copy bot "${customBotName}" started successfully! You can manage it in the Dashboard.`
+      );
+    } catch (error) {
+      console.error("❌ Error creating copy bot:", error);
+      setBotCreationError(
+        error instanceof Error ? error.message : "Failed to create copy bot"
+      );
+    } finally {
+      setCreatingBot(null);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       {/* Post Composer */}
@@ -830,6 +893,25 @@ const TradingFeed: React.FC = () => {
         </div>
       )}
 
+      {/* Error Display */}
+      {botCreationError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-bold">!</span>
+            </div>
+            <span className="text-red-700 font-medium">Bot Creation Error</span>
+          </div>
+          <p className="text-red-600 text-sm mt-1">{botCreationError}</p>
+          <button
+            onClick={() => setBotCreationError(null)}
+            className="text-red-500 hover:text-red-700 text-sm mt-2 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Trading Posts Feed */}
       <div className="space-y-4">
         {loading ? (
@@ -1117,9 +1199,21 @@ const TradingFeed: React.FC = () => {
 
                   {/* Trading Actions */}
                   <div className="flex items-center space-x-2">
-                    <button className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg hover:shadow-xl">
-                      <Bot className="w-4 h-4" />
-                      <span>Start Copy Bot</span>
+                    <button
+                      onClick={() => handleStartCopyBot(post)}
+                      disabled={creatingBot === post.id || !user}
+                      className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg hover:shadow-xl"
+                    >
+                      {creatingBot === post.id ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Bot className="w-4 h-4" />
+                      )}
+                      <span>
+                        {creatingBot === post.id
+                          ? "Starting..."
+                          : "Start Copy Bot"}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -1128,6 +1222,133 @@ const TradingFeed: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Bot Creation Popup */}
+      {showBotCreationPopup && selectedPost && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200 w-full max-w-md p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Start Copy Trading Bot
+              </h3>
+              <button
+                onClick={() => {
+                  setShowBotCreationPopup(false);
+                  setSelectedPost(null);
+                  setCustomBotName("");
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Post Info */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg overflow-hidden">
+                  {selectedPost.user.avatar &&
+                  selectedPost.user.avatar.length > 2 ? (
+                    <img
+                      src={selectedPost.user.avatar}
+                      alt={selectedPost.user.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">
+                        {selectedPost.user.avatar &&
+                        selectedPost.user.avatar.length <= 2
+                          ? selectedPost.user.avatar
+                          : selectedPost.user.name?.charAt(0).toUpperCase() ||
+                            "A"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-gray-900 font-semibold text-sm">
+                    {selectedPost.user.name}
+                  </h4>
+                  <p className="text-gray-500 text-xs font-mono">
+                    {selectedPost.user.walletAddress.slice(0, 8)}...
+                    {selectedPost.user.walletAddress.slice(-6)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mt-3 line-clamp-2">
+                {selectedPost.content}
+              </p>
+            </div>
+
+            {/* Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bot Name
+                </label>
+                <input
+                  type="text"
+                  value={customBotName}
+                  onChange={(e) => setCustomBotName(e.target.value)}
+                  placeholder="e.g., Copy Evan Lutra - 12/19/2024"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Give your bot a memorable name (optional)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Target Wallet Address
+                </label>
+                <input
+                  type="text"
+                  value={selectedPost.user.walletAddress}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm text-gray-600"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This is the wallet address of the trader you want to copy
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowBotCreationPopup(false);
+                  setSelectedPost(null);
+                  setCustomBotName("");
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateBotFromPopup}
+                disabled={creatingBot === selectedPost.id}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
+              >
+                {creatingBot === selectedPost.id ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Bot className="w-4 h-4" />
+                    <span>Start Bot</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -223,6 +223,13 @@ class CopyTradingService {
           order.order_type
         )}`
       );
+      console.log(`   - Raw Order Data:`, {
+        order_type: order.order_type,
+        price: order.price,
+        size: order.size,
+        leverage: order.leverage,
+        market_id: order.market_id,
+      });
 
       let tradeSide: boolean;
       let direction: boolean;
@@ -624,8 +631,15 @@ class CopyTradingService {
       10: "Market Exit Short",
       11: "Limit Exit Short",
       12: "Stop Exit Short",
+      // Add more order types that might exist
+      13: "Market Short",
+      14: "Limit Short",
+      15: "Stop Short",
+      16: "Market Long",
+      17: "Limit Long",
+      18: "Stop Long",
     };
-    return descriptions[orderType] || `Unknown (${orderType})`;
+    return descriptions[orderType] || `Unknown Order Type (${orderType})`;
   }
 
   private getMarketName(marketId: string): string {
@@ -650,15 +664,22 @@ class CopyTradingService {
     isShort: boolean;
   } {
     return {
-      isBuy: orderType >= 1 && orderType <= 3,
-      isSell: orderType >= 4 && orderType <= 6,
+      // Original order types (1-12) + Extended order types (13-18)
+      isBuy:
+        (orderType >= 1 && orderType <= 3) ||
+        (orderType >= 16 && orderType <= 18),
+      isSell:
+        (orderType >= 4 && orderType <= 6) ||
+        (orderType >= 13 && orderType <= 15),
       isExit: orderType >= 7 && orderType <= 12,
       isLong:
         (orderType >= 1 && orderType <= 3) ||
-        (orderType >= 7 && orderType <= 9),
+        (orderType >= 7 && orderType <= 9) ||
+        (orderType >= 16 && orderType <= 18),
       isShort:
         (orderType >= 4 && orderType <= 6) ||
-        (orderType >= 10 && orderType <= 12),
+        (orderType >= 10 && orderType <= 12) ||
+        (orderType >= 13 && orderType <= 15),
     };
   }
 
@@ -738,17 +759,32 @@ class CopyTradingService {
     status: "PENDING" | "SUCCESS" | "FAILED";
   }): Promise<void> {
     try {
+      console.log(
+        `${getTimestamp()} - 💾 STORING COPY TRADE ONLY (not target trade):`,
+        {
+          user_wallet: tradeData.user_wallet_address,
+          bot_id: tradeData.bot_id,
+          action: tradeData.action,
+          order_id: tradeData.order_id,
+          status: tradeData.status,
+        }
+      );
+
       const storedTrade = await supabaseService.storeTrade(tradeData);
       if (storedTrade) {
         console.log(
-          `${getTimestamp()} - 💾 Trade stored in database: ${storedTrade.id}`
+          `${getTimestamp()} - ✅ COPY TRADE stored in database: ${
+            storedTrade.id
+          }`
         );
       } else {
-        console.log(`${getTimestamp()} - ⚠️ Failed to store trade in database`);
+        console.log(
+          `${getTimestamp()} - ⚠️ Failed to store COPY TRADE in database`
+        );
       }
     } catch (error) {
       console.error(
-        `${getTimestamp()} - ❌ Error storing trade in database:`,
+        `${getTimestamp()} - ❌ Error storing COPY TRADE in database:`,
         error
       );
     }

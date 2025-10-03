@@ -490,13 +490,23 @@ class KanaOrderHistoryService implements OrderHistoryService {
 
     const orderInfo = this.getOrderTypeInfo(order.order_type);
 
+    // Enhanced logging for order type analysis
+    console.log("🔍 ORDER TYPE ANALYSIS:");
+    console.log(`   - Order Type ID: ${order.order_type}`);
+    console.log(`   - isBuy: ${orderInfo.isBuy}`);
+    console.log(`   - isSell: ${orderInfo.isSell}`);
+    console.log(`   - isExit: ${orderInfo.isExit}`);
+    console.log(`   - isLong: ${orderInfo.isLong}`);
+    console.log(`   - isShort: ${orderInfo.isShort}`);
+    console.log(`   - Raw Order Data:`, JSON.stringify(order, null, 2));
+
     if (orderInfo.isBuy) {
-      console.log("🟢 ACTION: BUY ORDER PLACED");
+      console.log("🟢 ACTION: BUY ORDER PLACED (LONG POSITION)");
       console.log(
         `   Target user placed BUY order: ${order.size} at $${order.price}`
       );
     } else if (orderInfo.isSell) {
-      console.log("🔴 ACTION: SELL ORDER PLACED");
+      console.log("🔴 ACTION: SELL ORDER PLACED (SHORT POSITION)");
       console.log(
         `   Target user placed SELL order: ${order.size} at $${order.price}`
       );
@@ -504,6 +514,11 @@ class KanaOrderHistoryService implements OrderHistoryService {
       console.log("🟡 ACTION: EXIT ORDER PLACED");
       console.log(
         `   Target user placed EXIT order: ${order.size} at $${order.price}`
+      );
+    } else {
+      console.log("❓ ACTION: UNKNOWN ORDER TYPE");
+      console.log(
+        `   Target user placed UNKNOWN order type ${order.order_type}: ${order.size} at $${order.price}`
       );
     }
 
@@ -524,8 +539,15 @@ class KanaOrderHistoryService implements OrderHistoryService {
       10: "Market Exit Short",
       11: "Limit Exit Short",
       12: "Stop Exit Short",
+      // Add more order types that might exist
+      13: "Market Short",
+      14: "Limit Short",
+      15: "Stop Short",
+      16: "Market Long",
+      17: "Limit Long",
+      18: "Stop Long",
     };
-    return descriptions[orderType] || `Unknown (${orderType})`;
+    return descriptions[orderType] || `Unknown Order Type (${orderType})`;
   }
 
   private getMarketName(marketId: string): string {
@@ -550,15 +572,22 @@ class KanaOrderHistoryService implements OrderHistoryService {
     isShort: boolean;
   } {
     return {
-      isBuy: orderType >= 1 && orderType <= 3,
-      isSell: orderType >= 4 && orderType <= 6,
+      // Original order types (1-12)
+      isBuy:
+        (orderType >= 1 && orderType <= 3) ||
+        (orderType >= 16 && orderType <= 18),
+      isSell:
+        (orderType >= 4 && orderType <= 6) ||
+        (orderType >= 13 && orderType <= 15),
       isExit: orderType >= 7 && orderType <= 12,
       isLong:
         (orderType >= 1 && orderType <= 3) ||
-        (orderType >= 7 && orderType <= 9),
+        (orderType >= 7 && orderType <= 9) ||
+        (orderType >= 16 && orderType <= 18),
       isShort:
         (orderType >= 4 && orderType <= 6) ||
-        (orderType >= 10 && orderType <= 12),
+        (orderType >= 10 && orderType <= 12) ||
+        (orderType >= 13 && orderType <= 15),
     };
   }
 
