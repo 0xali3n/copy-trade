@@ -15,11 +15,10 @@
 - [⚡ Key Features](#-key-features)
 - [🛠️ Tech Stack](#️-tech-stack)
 - [🚀 Getting Started](#-getting-started)
-- [📊 Workflow](#-workflow)
+- [📊 Complete User Journey](#-complete-user-journey)
 - [🔧 Configuration](#-configuration)
 - [📱 Screenshots](#-screenshots)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
+- [🔒 Security & Performance](#-security--performance)
 
 ## 🎯 Overview
 
@@ -252,54 +251,70 @@ pnpm run dev
 - Backend API: http://localhost:3001
 - Health Check: http://localhost:3001/health
 
-## 📊 Workflow
+## 📊 Complete User Journey
 
-### Copy Trading Workflow
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant F as Frontend
-    participant B as Backend
-    participant K as Kana Labs
-    participant A as Aptos
-    participant S as Supabase
-
-    U->>F: Create Copy Bot
-    F->>S: Store Bot Config
-    F->>B: Signal Bot Refresh
-    B->>S: Fetch Active Bots
-    B->>K: Subscribe to Order History
-
-    Note over K: Target Trader Places Order
-    K->>B: WebSocket Order Data
-    B->>B: Process Order
-    B->>K: Place Copy Order
-    K->>A: Submit Transaction
-    A->>B: Transaction Confirmation
-    B->>S: Store Trade Record
-    B->>F: Update Status
-    F->>U: Show Trade Result
-```
-
-### System Workflow
+### Step-by-Step User Flow
 
 ```mermaid
 graph TD
-    A[User Login] --> B[Create/Manage Bots]
-    B --> C[Backend Monitors Orders]
-    C --> D[Order Detected]
-    D --> E[Process Order]
-    E --> F[Place Copy Trade]
-    F --> G[Store in Database]
-    G --> H[Update Frontend]
-    H --> I[User Sees Results]
-
-    J[Social Feed] --> K[Share Trades]
-    K --> L[Other Users See]
-    L --> M[Start Copying]
-    M --> B
+    A[User Registration] --> B[Google OAuth Login]
+    B --> C[Profile Setup]
+    C --> D[Wallet Generation]
+    D --> E[Deposit USDT Funds]
+    E --> F[Airdrop 0.1 APT]
+    F --> G[Move to Trading Balance]
+    G --> H[Browse Social Feed]
+    H --> I[Start Copy Trading Bot]
+    I --> J[Real-time Copy Trading]
+    J --> K[Monitor Performance]
+    K --> L[Manage Bots]
 ```
+
+### Detailed User Journey
+
+**1. 🚀 User Registration & Setup**
+
+- User visits platform
+- Google OAuth authentication
+- Profile creation and verification
+- Welcome onboarding flow
+
+**2. 💰 Wallet & Funding Setup**
+
+- Automatic wallet generation (Aptos)
+- Private key secure storage
+- USDT deposit instructions
+- 0.1 APT airdrop for gas fees
+- Trading balance activation
+
+**3. 📱 Social Trading Discovery**
+
+- Browse trading feed
+- View successful traders' posts
+- See performance metrics
+- Read trading strategies
+
+**4. 🤖 Copy Bot Creation**
+
+- Click "Start Copy Bot" on any post
+- Custom bot naming
+- Target wallet confirmation
+- Bot activation
+
+**5. ⚡ Real-time Copy Trading**
+
+- Backend monitors target trader
+- WebSocket order detection
+- Automatic trade replication
+- Transaction confirmation
+- Performance tracking
+
+**6. 📊 Management & Analytics**
+
+- Dashboard bot management
+- Trade history viewing
+- Performance analytics
+- Start/stop bot controls
 
 ## 🔧 Configuration
 
@@ -386,87 +401,21 @@ Please add the following screenshots to showcase the platform:
    - Show the platform on mobile devices
    - Display responsive design and touch interactions
 
-## 🚀 Deployment
+## 🔒 Security & Performance
 
-### Production Deployment
+**Security Features:**
 
-1. **Backend Deployment**
+- Private key secure storage
+- Environment-based API configuration
+- Input validation and error handling
+- CORS protection
 
-```bash
-# Build the backend
-cd backend
-pnpm run build
+**Performance Optimizations:**
 
-# Deploy to your preferred platform
-# (Vercel, Railway, Heroku, etc.)
-```
-
-2. **Frontend Deployment**
-
-```bash
-# Build the frontend
-cd frontend
-pnpm run build
-
-# Deploy to Vercel, Netlify, or similar
-```
-
-3. **Environment Configuration**
-
-- Update production environment variables
-- Configure CORS settings
-- Set up SSL certificates
-- Configure domain names
-
-## 🔒 Security Features
-
-- **Private Key Management**: Secure storage and handling of user private keys
-- **API Key Protection**: Environment-based configuration
-- **CORS Configuration**: Proper cross-origin resource sharing
-- **Input Validation**: Comprehensive data validation
-- **Error Handling**: Secure error messages without sensitive data exposure
-
-## 📈 Performance Optimizations
-
-- **WebSocket Connection**: Real-time data with minimal latency
-- **Database Indexing**: Optimized queries for fast data retrieval
-- **Gas Optimization**: Minimal transaction fees (~0.001 APT)
-- **Caching**: Efficient data caching strategies
-- **Bundle Optimization**: Optimized frontend builds
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-
-- Follow TypeScript best practices
-- Write comprehensive tests
-- Update documentation
-- Follow the existing code style
-- Ensure all builds pass
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Aptos Labs** - For the innovative blockchain platform
-- **Kana Labs** - For the comprehensive trading API
-- **Supabase** - For the powerful database platform
-- **React Team** - For the amazing frontend framework
-- **Node.js Community** - For the robust backend runtime
-
-## 📞 Support
-
-For support, email support@socialtrade.com or join our Discord community.
+- Real-time WebSocket connections
+- Optimized database queries
+- Gas-efficient transactions (0.001 APT)
+- Fast frontend builds
 
 ---
 
