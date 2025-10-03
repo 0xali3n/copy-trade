@@ -1,196 +1,103 @@
-# 🚀 Social Trade - Presentation Slides
+# Social Trade - Presentation
 
-## Slide 1: Title & Overview
+## Slide 1: What is Social Trade?
 
-**Social Trade: Advanced Copy Trading Platform**
+**Real-time copy trading platform on Aptos blockchain**
 
-_Real-time social trading on Aptos blockchain_
-
-**Key Highlights:**
-
-- 🤖 **Automated Copy Trading** - Copy successful traders in real-time
-- 📱 **Social Platform** - Share trades and strategies
-- ⚡ **Multi-Bot Management** - Handle unlimited trading bots
-- 🔗 **Blockchain Integration** - Built on Aptos with Kana Labs API
-- 💰 **Gas Optimized** - Minimal fees (~0.001 APT per trade)
-
-**Tech Stack:**
-
-- Frontend: React + TypeScript + Tailwind CSS
-- Backend: Node.js + Express + WebSocket
-- Blockchain: Aptos + Kana Labs Perpetual Futures
-- Database: Supabase PostgreSQL
-
----
-
-## Slide 2: Architecture & Technology
-
-**System Architecture**
-
-```
-Frontend (React/TS) ←→ Backend (Node.js/TS) ←→ Aptos Blockchain
-        ↓                       ↓                       ↓
-   Supabase DB            Kana Labs API           WebSocket
-```
-
-**Core Components:**
-
-- **Copy Trading Service** - Real-time order processing
-- **WebSocket Integration** - Live order monitoring
-- **Multi-Bot Engine** - Simultaneous bot management
-- **Social Feed** - Trading community platform
-- **Gas Optimization** - Efficient transaction handling
-
-**Key Integrations:**
-
-- Kana Labs WebSocket API for real-time order data
-- Aptos SDK for blockchain transactions
-- Supabase for data persistence
-- Google OAuth for authentication
-
----
-
-## Slide 3: Features & Capabilities
-
-**🤖 Advanced Copy Trading**
-
-- Real-time order detection via WebSocket
-- Exact trade replication with identical parameters
-- Multi-bot support for different strategies
-- Dynamic bot management without restarts
-- Gas-optimized transactions (0.001 APT per trade)
-
-**📱 Social Trading Platform**
-
-- Interactive trading feed with posts
-- User profiles with performance metrics
-- "Start Copy Bot" functionality from posts
-- Real-time market data and notifications
-- Community-driven trading insights
-
-**🔧 Technical Excellence**
-
-- Full TypeScript implementation
-- Comprehensive error handling
-- Environment-based configuration
-- Database optimization with indexing
-- Responsive mobile design
-
----
-
-## Slide 4: Workflow & User Experience
-
-**Copy Trading Workflow:**
-
-1. **User creates bot** → Frontend stores config in Supabase
-2. **Backend monitors** → WebSocket connection to Kana Labs
-3. **Order detected** → Real-time order processing
-4. **Copy trade placed** → Aptos blockchain transaction
-5. **Results stored** → Database update and frontend notification
-
-**User Journey:**
-
-- **Discovery** → Browse trading feed for successful traders
-- **Creation** → One-click bot creation from posts
-- **Management** → Dashboard for bot monitoring
-- **Analytics** → Comprehensive performance tracking
-- **Social** → Share trades and strategies
+- Automatically copy trades from successful traders
+- Social feed to discover and follow top performers
+- One-click bot creation from trading posts
+- Built on Aptos with Kana Labs integration
 
 **Key Benefits:**
 
-- ⚡ **Instant Setup** - Create bots in seconds
-- 📊 **Real-time Updates** - Live trade notifications
-- 🎯 **Precise Copying** - Exact trade replication
-- 💡 **Social Learning** - Learn from successful traders
+- Real-time execution (<100ms latency)
+- Low fees (0.001 APT per trade)
+- Multi-bot management
+- Mobile responsive
 
 ---
 
-## Slide 5: Technical Implementation & Future
+## Slide 2: How It Works
 
-**Advanced Technical Features**
+**Simple 3-step process:**
 
-**Real-time Processing:**
+1. **Discover** → Browse social feed for successful traders
+2. **Copy** → Click "Start Copy Bot" on any post
+3. **Profit** → Bot automatically replicates all trades
 
-- WebSocket-based order monitoring
-- Per-bot state management
-- Dynamic bot activation/deactivation
-- Comprehensive logging and debugging
+**Technical Flow:**
 
-**Blockchain Integration:**
-
-- Aptos SDK for transaction handling
-- Kana Labs API for perpetual futures
-- Gas optimization strategies
-- Transaction confirmation tracking
-
-**Database Design:**
-
-- Optimized PostgreSQL schema
-- Proper indexing for performance
-- Real-time subscriptions
-- Data integrity and consistency
-
-**Future Roadmap:**
-
-- 🚀 **Advanced Analytics** - ML-based performance prediction
-- 🌐 **Multi-Chain Support** - Expand to other blockchains
-- 📱 **Mobile App** - Native iOS/Android applications
-- 🤖 **AI Integration** - Smart bot recommendations
-- 💼 **Institutional Features** - Advanced risk management
-
-**Impact:**
-
-- Democratizing trading through social collaboration
-- Reducing barriers to successful trading strategies
-- Creating a community-driven trading ecosystem
-- Leveraging blockchain for transparent and efficient trading
+- WebSocket monitors target trader's orders
+- Backend processes orders in real-time
+- Places identical trades on user's wallet
+- Stores results in database
 
 ---
 
-## Presentation Notes
+## Slide 3: Key Features
 
-### Slide 1 Notes:
+**For Traders:**
 
-- Emphasize the real-time nature and blockchain integration
-- Highlight the gas optimization as a key differentiator
-- Mention the comprehensive tech stack
+- Share trades and strategies on social feed
+- Build following and reputation
+- Track performance metrics
 
-### Slide 2 Notes:
+**For Followers:**
 
-- Explain the WebSocket integration for real-time data
-- Detail the multi-bot management capabilities
-- Show how different components work together
+- Copy unlimited traders simultaneously
+- Custom bot names and settings
+- Real-time notifications
+- Complete trade history
 
-### Slide 3 Notes:
+**Technical:**
 
-- Focus on the social aspect and community features
-- Explain the technical excellence and reliability
-- Highlight the user-friendly interface
+- TypeScript frontend/backend
+- Supabase database
+- Google OAuth authentication
 
-### Slide 4 Notes:
+---
 
-- Walk through the complete user journey
-- Explain the technical workflow in simple terms
-- Show the benefits to end users
+## Slide 4: User Experience
 
-### Slide 5 Notes:
+**Dashboard:**
 
-- Detail the advanced technical implementation
-- Present the future vision and roadmap
-- Emphasize the impact on the trading community
+- Manage all copy bots in one place
+- View performance and statistics
+- Start/stop bots instantly
 
-### Visual Elements to Include:
+**Trading Feed:**
 
-- Architecture diagrams
-- Screenshots of the platform
-- Workflow diagrams
-- Performance metrics
-- User interface mockups
+- See what top traders are doing
+- One-click bot creation
+- Like and follow traders
 
-### Key Messages:
+**Mobile Ready:**
 
-1. **Innovation** - Cutting-edge technology stack
-2. **Accessibility** - Easy-to-use social trading platform
-3. **Performance** - Real-time, gas-optimized trading
-4. **Community** - Social-driven trading ecosystem
-5. **Future** - Scalable and extensible platform
+- Responsive design
+- Touch-friendly interface
+- Works on all devices
+
+---
+
+## Slide 5: Future & Impact
+
+**What's Next:**
+
+- Mobile apps (iOS/Android)
+- Advanced analytics with ML
+- Multi-chain support
+- AI-powered recommendations
+
+**Market Impact:**
+
+- Democratizes trading knowledge
+- Reduces barriers to successful trading
+- Creates trading community
+- Transparent and efficient
+
+**Ready to Launch:**
+
+- Production-ready platform
+- Comprehensive testing
+- Scalable architecture
