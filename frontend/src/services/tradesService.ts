@@ -36,24 +36,40 @@ export class TradesService {
   static async getUserTrades(
     userWalletAddress: string,
     limit: number = 10,
-    offset: number = 0
+    offset: number = 0,
+    statusFilter?: "SUCCESS" | "FAILED" | "PENDING"
   ): Promise<CopyTradingTrade[]> {
     try {
-      const { data, error } = await supabase
+      console.log(`🔍 Fetching trades for user wallet: ${userWalletAddress}`);
+
+      let query = supabase
         .from("copy_trading_trades")
         .select("*")
-        .eq("user_wallet_address", userWalletAddress)
+        .eq("user_wallet_address", userWalletAddress);
+
+      // Filter by status if specified
+      if (statusFilter) {
+        query = query.eq("status", statusFilter);
+        console.log(`🔍 Filtering by status: ${statusFilter}`);
+      }
+
+      const { data, error } = await query
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (error) {
-        console.error("Error fetching user trades:", error);
+        console.error("❌ Error fetching user trades:", error);
         throw error;
       }
 
+      console.log(
+        `✅ Found ${data?.length || 0} trades for user ${userWalletAddress}${
+          statusFilter ? ` (${statusFilter} only)` : ""
+        }`
+      );
       return data || [];
     } catch (error) {
-      console.error("Error in getUserTrades:", error);
+      console.error("❌ Error in getUserTrades:", error);
       return [];
     }
   }

@@ -53,6 +53,35 @@ app.get("/api/status", (req, res) => {
   });
 });
 
+// Dynamic bot management endpoint
+app.post("/api/refresh-bots", async (req, res) => {
+  try {
+    console.log(`${getTimestamp()} - 🔄 Manual bot refresh requested`);
+
+    // Stop current monitoring
+    orderHistoryService.stopMonitoring();
+
+    // Wait a moment for cleanup
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Restart monitoring with fresh database data
+    await orderHistoryService.startMonitoringFromDatabase();
+
+    res.json({
+      success: true,
+      message: "Bots refreshed successfully",
+      timestamp: getTimestamp(),
+    });
+  } catch (error) {
+    console.error(`${getTimestamp()} - ❌ Error refreshing bots:`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      timestamp: getTimestamp(),
+    });
+  }
+});
+
 // Initialize services on server start
 async function initializeServices() {
   try {

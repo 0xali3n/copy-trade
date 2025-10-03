@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { backendSignalService } from "./backendSignalService";
 
 export interface SimpleBot {
   id: string;
@@ -78,6 +79,10 @@ class SimpleBotService {
       }
 
       console.log("✅ Bot created successfully:", bot);
+
+      // Signal backend to refresh bots
+      await backendSignalService.signalBotRefresh();
+
       return bot;
     } catch (error) {
       console.error("❌ Error creating bot:", error);
@@ -156,6 +161,10 @@ class SimpleBotService {
       }
 
       console.log("✅ Bot updated successfully:", bot);
+
+      // Signal backend to refresh bots
+      await backendSignalService.signalBotRefresh();
+
       return bot;
     } catch (error) {
       console.error("❌ Error updating bot:", error);
@@ -181,6 +190,9 @@ class SimpleBotService {
       }
 
       console.log("✅ Bot deleted successfully");
+
+      // Signal backend to refresh bots
+      await backendSignalService.signalBotRefresh();
     } catch (error) {
       console.error("❌ Error deleting bot:", error);
       throw error;

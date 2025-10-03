@@ -42,9 +42,12 @@ interface OrderResult {
 
 class CopyTradingService {
   private aptos: Aptos;
-  private trackedOrders: Set<string> = new Set();
-  private botStartTime: number = 0;
   private isInitialized: boolean = false;
+
+  // Per-bot tracking - each bot has its own tracked orders and start time
+  private botTrackedOrders: Map<string, Set<string>> = new Map(); // botId -> Set<orderId>
+  private botStartTimes: Map<string, number> = new Map(); // botId -> startTime
+  private activeBots: Set<string> = new Set(); // Set of active bot IDs
 
   // Copy trading settings
   private copyTradingEnabled: boolean = true;
@@ -66,7 +69,6 @@ class CopyTradingService {
         `${getTimestamp()} - ✅ Copy trading will use per-user private keys from database`
       );
 
-      this.botStartTime = Math.floor(Date.now() / 1000);
       this.isInitialized = true;
       console.log(
         `${getTimestamp()} - ✅ Copy Trading Service initialized successfully!`
@@ -76,6 +78,7 @@ class CopyTradingService {
       console.log(
         `   - Copy Mode: EXACT COPY (same size, same order type, no limits)`
       );
+      console.log(`   - Multi-Bot Support: ENABLED (per-bot tracking)`);
     } catch (error) {
       console.error(
         `${getTimestamp()} - ❌ Failed to initialize copy trading service:`,
@@ -97,12 +100,28 @@ class CopyTradingService {
         } (Target: ${bot.target_address})`
       );
 
+      // Check if bot is active
+      if (!this.isBotActive(bot.id)) {
+        console.log(
+          `${getTimestamp()} - ⚠️ Bot ${
+            bot.bot_name
+          } is not active, skipping order`
+        );
+        return;
+      }
+
+      // Initialize bot tracking if not exists
+      this.initializeBotTracking(bot.id);
+
       const orderTimestamp = parseInt(order.timestamp);
-      const isNewOrder = !this.trackedOrders.has(order.order_id);
-      const isAfterBotStart = orderTimestamp >= this.botStartTime;
+      const botTrackedOrders = this.botTrackedOrders.get(bot.id)!;
+      const botStartTime = this.botStartTimes.get(bot.id)!;
+
+      const isNewOrder = !botTrackedOrders.has(order.order_id);
+      const isAfterBotStart = orderTimestamp >= botStartTime;
 
       if (isNewOrder && isAfterBotStart) {
-        this.trackedOrders.add(order.order_id);
+        botTrackedOrders.add(order.order_id);
 
         // Create user-specific account
         const userAccount = this.createAccountFromPrivateKey(userPrivateKey);
@@ -113,11 +132,24 @@ class CopyTradingService {
         console.log(
           `\n${getTimestamp()} - 🔄 Copying order for bot: ${bot.bot_name}`
         );
+        console.log(`   Bot ID: ${bot.id}`);
         console.log(`   User Wallet: ${userAccount.accountAddress}`);
         console.log(`   Target Address: ${bot.target_address}`);
 
         const orderInfo = this.getOrderTypeInfo(order.order_type);
         await this.copyOrderForUser(order, orderInfo, userAccount, bot);
+      } else if (!isNewOrder) {
+        console.log(
+          `${getTimestamp()} - ⏭️ Order ${
+            order.order_id
+          } already processed by bot ${bot.bot_name}`
+        );
+      } else if (!isAfterBotStart) {
+        console.log(
+          `${getTimestamp()} - ⏭️ Order ${order.order_id} is before bot ${
+            bot.bot_name
+          } start time`
+        );
       }
     } catch (error) {
       console.error(
@@ -179,16 +211,46 @@ class CopyTradingService {
       );
       console.log(`   Order Status: ${order.status}`);
       console.log(`   Full Order Data:`, JSON.stringify(order, null, 2));
+      console.log(`   🔍 Order Analysis:`);
+      console.log(`   - Order Type: ${order.order_type}`);
+      console.log(`   - isBuy: ${orderInfo.isBuy}`);
+      console.log(`   - isSell: ${orderInfo.isSell}`);
+      console.log(`   - isExit: ${orderInfo.isExit}`);
+      console.log(`   - isLong: ${orderInfo.isLong}`);
+      console.log(`   - isShort: ${orderInfo.isShort}`);
+      console.log(
+        `   - Order Description: ${this.getOrderTypeDescription(
+          order.order_type
+        )}`
+      );
 
       let tradeSide: boolean;
       let direction: boolean;
 
       if (orderInfo.isExit) {
+        // For exit orders, use the original position type
         tradeSide = orderInfo.isLong;
         direction = true; // Close position
+        console.log(
+          `   🎯 EXIT ORDER: tradeSide=${tradeSide} (${
+            tradeSide ? "LONG" : "SHORT"
+          }), direction=CLOSE`
+        );
       } else {
-        tradeSide = orderInfo.isLong;
+        // For new orders, determine side based on buy/sell
+        // Buy orders (1-3) = Long (true), Sell orders (4-6) = Short (false)
+        tradeSide = orderInfo.isBuy; // isBuy = true for long, false for short
         direction = false; // Open position
+        console.log(
+          `   🎯 NEW ORDER: tradeSide=${tradeSide} (${
+            tradeSide ? "LONG" : "SHORT"
+          }), direction=OPEN`
+        );
+        console.log(
+          `   📊 Order Type Mapping: Type ${order.order_type} → ${
+            orderInfo.isBuy ? "BUY (LONG)" : "SELL (SHORT)"
+          }`
+        );
       }
 
       const orderParams: LimitOrderParams = {
@@ -244,12 +306,17 @@ class CopyTradingService {
         );
 
         // Store the successful trade in database
+        const tradeAction = this.getTradeAction(orderInfo, direction);
+        console.log(
+          `   💾 Storing trade in database with action: ${tradeAction}`
+        );
+
         await this.storeTradeInDatabase({
           user_wallet_address: userAccount.accountAddress.toString(),
           bot_id: bot.id,
           symbol: this.getMarketName(order.market_id),
           market_id: order.market_id,
-          action: this.getTradeAction(orderInfo, direction),
+          action: tradeAction,
           order_type: isMarketOrder ? "MARKET" : "LIMIT",
           leverage: order.leverage,
           price: parseFloat(order.price),
@@ -266,12 +333,17 @@ class CopyTradingService {
         console.log(`   Error: ${result.error}`);
 
         // Store the failed trade in database
+        const tradeAction = this.getTradeAction(orderInfo, direction);
+        console.log(
+          `   💾 Storing FAILED trade in database with action: ${tradeAction}`
+        );
+
         await this.storeTradeInDatabase({
           user_wallet_address: userAccount.accountAddress.toString(),
           bot_id: bot.id,
           symbol: this.getMarketName(order.market_id),
           market_id: order.market_id,
-          action: this.getTradeAction(orderInfo, direction),
+          action: tradeAction,
           order_type: isMarketOrder ? "MARKET" : "LIMIT",
           leverage: order.leverage,
           price: parseFloat(order.price),
@@ -343,10 +415,17 @@ class CopyTradingService {
       const transactionPayload = await this.aptos.transaction.build.simple({
         sender: userAccount.accountAddress,
         data: payloadData,
+        options: {
+          maxGasAmount: 10000, // Set lower gas limit
+          gasUnitPrice: 100, // Set lower gas price
+        },
       });
 
       console.log(
         `${getTimestamp()} - ✍️ Signing and submitting transaction...`
+      );
+      console.log(
+        `${getTimestamp()} - 💰 Gas settings: maxGasAmount=10000, gasUnitPrice=100 (Total: ~0.001 APT)`
       );
 
       const committedTxn =
@@ -375,13 +454,30 @@ class CopyTradingService {
         };
       }
     } catch (error: any) {
-      console.error(`${getTimestamp()} - ❌ API Error details:`, {
+      console.error(`${getTimestamp()} - ❌ Limit Order API Error details:`, {
         message: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
         url: error.config?.url,
       });
+
+      // Check for specific gas fee error
+      if (
+        error.message &&
+        error.message.includes("INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE")
+      ) {
+        console.log(
+          `${getTimestamp()} - 💡 Gas Fee Error: User wallet needs more APT for transaction fees`
+        );
+        console.log(
+          `${getTimestamp()} - 💡 Current gas cost: ~0.001 APT (maxGasAmount=10000, gasUnitPrice=100)`
+        );
+        console.log(
+          `${getTimestamp()} - 💡 Recommended: Ensure wallet has at least 0.01 APT for multiple trades`
+        );
+      }
+
       return {
         success: false,
         error:
@@ -440,10 +536,17 @@ class CopyTradingService {
       const transactionPayload = await this.aptos.transaction.build.simple({
         sender: userAccount.accountAddress,
         data: payloadData,
+        options: {
+          maxGasAmount: 10000, // Set lower gas limit
+          gasUnitPrice: 100, // Set lower gas price
+        },
       });
 
       console.log(
         `${getTimestamp()} - ✍️ Signing and submitting transaction...`
+      );
+      console.log(
+        `${getTimestamp()} - 💰 Gas settings: maxGasAmount=10000, gasUnitPrice=100 (Total: ~0.001 APT)`
       );
       const committedTxn =
         await this.aptos.transaction.signAndSubmitTransaction({
@@ -480,6 +583,23 @@ class CopyTradingService {
         data: error.response?.data,
         url: error.config?.url,
       });
+
+      // Check for specific gas fee error
+      if (
+        error.message &&
+        error.message.includes("INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE")
+      ) {
+        console.log(
+          `${getTimestamp()} - 💡 Gas Fee Error: User wallet needs more APT for transaction fees`
+        );
+        console.log(
+          `${getTimestamp()} - 💡 Current gas cost: ~0.001 APT (maxGasAmount=10000, gasUnitPrice=100)`
+        );
+        console.log(
+          `${getTimestamp()} - 💡 Recommended: Ensure wallet has at least 0.01 APT for multiple trades`
+        );
+      }
+
       return {
         success: false,
         error:
@@ -550,6 +670,53 @@ class CopyTradingService {
     );
   }
 
+  // Bot management methods
+  private initializeBotTracking(botId: string): void {
+    if (!this.botTrackedOrders.has(botId)) {
+      this.botTrackedOrders.set(botId, new Set());
+      // Set start time to 1 hour ago to allow processing recent orders
+      this.botStartTimes.set(botId, Math.floor(Date.now() / 1000) - 3600);
+      this.activeBots.add(botId);
+      console.log(
+        `${getTimestamp()} - 🤖 Initialized tracking for bot ${botId} (start time: 1 hour ago)`
+      );
+    }
+  }
+
+  private isBotActive(botId: string): boolean {
+    return this.activeBots.has(botId);
+  }
+
+  public activateBot(botId: string): void {
+    this.initializeBotTracking(botId);
+    console.log(`${getTimestamp()} - ✅ Bot ${botId} activated`);
+  }
+
+  public deactivateBot(botId: string): void {
+    this.activeBots.delete(botId);
+    console.log(`${getTimestamp()} - ⏸️ Bot ${botId} deactivated`);
+  }
+
+  public getBotStatus(botId: string): {
+    isActive: boolean;
+    trackedOrdersCount: number;
+    startTime: number | null;
+  } {
+    return {
+      isActive: this.isBotActive(botId),
+      trackedOrdersCount: this.botTrackedOrders.get(botId)?.size || 0,
+      startTime: this.botStartTimes.get(botId) || null,
+    };
+  }
+
+  public getAllBotsStatus(): Map<string, any> {
+    const status = new Map();
+    for (const botId of this.activeBots) {
+      status.set(botId, this.getBotStatus(botId));
+    }
+    return status;
+  }
+
   // Removed size multiplier and limits - using exact copy only
 
   /**
@@ -601,20 +768,28 @@ class CopyTradingService {
     direction: boolean
   ): "BUY" | "SELL" | "EXIT_LONG" | "EXIT_SHORT" {
     if (direction) {
-      // Closing position
+      // Closing position - use the original position type
       return orderInfo.isLong ? "EXIT_LONG" : "EXIT_SHORT";
     } else {
-      // Opening position
-      return orderInfo.isLong ? "BUY" : "SELL";
+      // Opening position - use buy/sell to determine action
+      return orderInfo.isBuy ? "BUY" : "SELL";
     }
   }
 
   getStatus(): any {
+    const allBotsStatus = this.getAllBotsStatus();
+    const totalTrackedOrders = Array.from(
+      this.botTrackedOrders.values()
+    ).reduce((sum, orders) => sum + orders.size, 0);
+
     return {
       isInitialized: this.isInitialized,
       copyTradingEnabled: this.copyTradingEnabled,
       copyMode: "EXACT COPY (same size, same order type, no limits)",
-      trackedOrdersCount: this.trackedOrders.size,
+      multiBotSupport: true,
+      activeBotsCount: this.activeBots.size,
+      totalTrackedOrdersCount: totalTrackedOrders,
+      botsStatus: Object.fromEntries(allBotsStatus),
       accountAddress: "per-user accounts from database",
     };
   }

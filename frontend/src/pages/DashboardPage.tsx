@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   FaRobot,
-  FaEye,
   FaTimes,
   FaCopy,
   FaBullseye,
@@ -15,6 +14,7 @@ import {
 } from "../services/simpleBotService";
 import { TradesService, TradeStats } from "../services/tradesService";
 import { useAuth } from "../contexts/AuthContext";
+import { backendSignalService } from "../services/backendSignalService";
 import RecentTrades from "../components/RecentTrades";
 
 const DashboardPage: React.FC = () => {
@@ -111,13 +111,27 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  const testBackendSignal = async () => {
+    try {
+      console.log("🧪 Testing backend signal...");
+      const success = await backendSignalService.signalBotRefresh();
+      if (success) {
+        console.log("✅ Backend signal test successful!");
+        setError(null);
+      } else {
+        setError("Backend signal test failed - check console for details");
+      }
+    } catch (err) {
+      console.error("❌ Backend signal test error:", err);
+      setError(
+        err instanceof Error ? err.message : "Backend signal test failed"
+      );
+    }
+  };
+
   // Calculate totals (real data only)
-  const totalBots = tradingBots.length;
   const activeBots = tradingBots.filter(
     (bot) => bot.status === "active"
-  ).length;
-  const pausedBots = tradingBots.filter(
-    (bot) => bot.status === "paused"
   ).length;
 
   if (loading && tradingBots.length === 0) {
@@ -246,12 +260,21 @@ const DashboardPage: React.FC = () => {
             <h3 className="text-gray-900 font-semibold text-xl">
               Trading Bots
             </h3>
-            <button
-              onClick={() => setIsCreateBotOpen(true)}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200"
-            >
-              Create Bot
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={testBackendSignal}
+                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                title="Test backend signal"
+              >
+                🔄 Test Signal
+              </button>
+              <button
+                onClick={() => setIsCreateBotOpen(true)}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200"
+              >
+                Create Bot
+              </button>
+            </div>
           </div>
 
           {tradingBots.length === 0 ? (

@@ -41,7 +41,9 @@ const RecentTrades: React.FC<RecentTradesProps> = ({
       setError(null);
       const userTrades = await TradesService.getUserTrades(
         user.aptos_wallet_address,
-        limit
+        limit,
+        0,
+        "SUCCESS" // Only show successful trades
       );
       setTrades(userTrades);
     } catch (err) {

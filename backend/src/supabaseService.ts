@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { config } from "./config";
+import { config, getTimestamp } from "./config";
 
 // Initialize Supabase client
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey);
@@ -8,7 +8,7 @@ export interface CopyTradingBot {
   id: string;
   target_address: string;
   user_address: string;
-  user_private_key: string;
+  user_private_key?: string; // Make optional since current DB doesn't have it
   bot_name: string;
   status: string;
   created_at: string;
@@ -51,6 +51,29 @@ class SupabaseService {
    */
   async getActiveCopyTradingBots(): Promise<CopyTradingBot[]> {
     try {
+      // First, let's see ALL bots regardless of status
+      const { data: allBots, error: allError } = await supabase
+        .from("copy_trading_bots")
+        .select("*");
+
+      if (allError) {
+        throw new Error(
+          `Failed to fetch all copy trading bots: ${allError.message}`
+        );
+      }
+
+      console.log(
+        `${getTimestamp()} - 🔍 All bots in database:`,
+        allBots?.map((bot) => ({
+          id: bot.id,
+          bot_name: bot.bot_name,
+          status: bot.status,
+          target_address: bot.target_address,
+          user_address: bot.user_address,
+        }))
+      );
+
+      // Now get only active ones
       const { data, error } = await supabase
         .from("copy_trading_bots")
         .select("*")
@@ -61,6 +84,15 @@ class SupabaseService {
           `Failed to fetch active copy trading bots: ${error.message}`
         );
       }
+
+      console.log(
+        `${getTimestamp()} - ✅ Active bots found:`,
+        data?.map((bot) => ({
+          id: bot.id,
+          bot_name: bot.bot_name,
+          status: bot.status,
+        }))
+      );
 
       return data || [];
     } catch (error) {
@@ -97,6 +129,10 @@ class SupabaseService {
     targetAddress: string
   ): Promise<CopyTradingBot[]> {
     try {
+      console.log(
+        `${getTimestamp()} - 🔍 Looking for bots with target: ${targetAddress}`
+      );
+
       const { data, error } = await supabase
         .from("copy_trading_bots")
         .select("*")
@@ -108,6 +144,19 @@ class SupabaseService {
           `Failed to fetch bots for target address: ${error.message}`
         );
       }
+
+      console.log(
+        `${getTimestamp()} - 🤖 Found ${
+          data?.length || 0
+        } bots for target ${targetAddress}:`,
+        data?.map((bot) => ({
+          id: bot.id,
+          bot_name: bot.bot_name,
+          status: bot.status,
+          user_address: bot.user_address,
+          has_private_key: !!bot.user_private_key,
+        }))
+      );
 
       return data || [];
     } catch (error) {

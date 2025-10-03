@@ -14,7 +14,6 @@ import {
   AlertCircle,
   ExternalLink,
   Filter,
-  Download,
   RefreshCw,
 } from "lucide-react";
 
@@ -39,16 +38,23 @@ const TradesPage: React.FC = () => {
   }, [user?.aptos_wallet_address, filter, currentPage]);
 
   const loadTrades = async () => {
-    if (!user?.aptos_wallet_address) return;
+    if (!user?.aptos_wallet_address) {
+      console.log("❌ No user wallet address found");
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
       const offset = currentPage * itemsPerPage;
+      console.log(`🔄 Loading trades for user: ${user.aptos_wallet_address}`);
       const userTrades = await TradesService.getUserTrades(
         user.aptos_wallet_address,
         itemsPerPage,
-        offset
+        offset,
+        filter === "ALL"
+          ? undefined
+          : (filter as "SUCCESS" | "FAILED" | "PENDING")
       );
 
       if (currentPage === 0) {

@@ -235,7 +235,7 @@ class SimpleCopyTradingService {
     try {
       console.log("🔄 Testing database connection...");
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("copy_trading_bots")
         .select("count")
         .limit(1);

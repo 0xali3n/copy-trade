@@ -36,6 +36,7 @@ class KanaOrderHistoryService implements OrderHistoryService {
   public isMonitoring: boolean = false;
   public targetProfileAddresses: Map<string, string> = new Map(); // targetAddress -> profileAddress
   public trackedOrders: Set<string> = new Set();
+  private lastKnownTargetAddresses: Set<string> = new Set(); // Track last known targets for comparison
 
   async startMonitoringFromDatabase(): Promise<void> {
     try {
@@ -61,6 +62,28 @@ class KanaOrderHistoryService implements OrderHistoryService {
         } active target addresses:`,
         targetAddresses
       );
+
+      // Also get all active bots to show details
+      const allActiveBots = await supabaseService.getActiveCopyTradingBots();
+      console.log(
+        `${getTimestamp()} - 🤖 Found ${
+          allActiveBots.length
+        } active copy trading bots:`
+      );
+      allActiveBots.forEach((bot, index) => {
+        console.log(
+          `${getTimestamp()} -   Bot ${index + 1}: ${
+            bot.bot_name || "Unnamed"
+          } (ID: ${bot.id})`
+        );
+        console.log(`${getTimestamp()} -     Target: ${bot.target_address}`);
+        console.log(`${getTimestamp()} -     User: ${bot.user_address}`);
+        console.log(
+          `${getTimestamp()} -     Private Key: ${
+            bot.user_private_key ? "✅ Present" : "❌ Missing"
+          }`
+        );
+      });
 
       if (targetAddresses.length === 0) {
         console.log(
@@ -99,6 +122,9 @@ class KanaOrderHistoryService implements OrderHistoryService {
       // Step 6: Subscribe to order history for all targets
       this.subscribeToOrderHistoryForAllTargets();
 
+      // Step 7: Initialize last known targets for comparison
+      this.lastKnownTargetAddresses = new Set(targetAddresses);
+
       this.isMonitoring = true;
       console.log(
         `${getTimestamp()} - ✅ Order history monitoring started successfully for ${
@@ -107,6 +133,13 @@ class KanaOrderHistoryService implements OrderHistoryService {
       );
       console.log(
         `${getTimestamp()} - 🚀 Copy trading is ACTIVE - orders will be automatically copied!`
+      );
+      console.log(
+        `${getTimestamp()} - 📊 Monitoring ${
+          targetAddresses.length
+        } target addresses with ${
+          this.targetProfileAddresses.size
+        } profile addresses`
       );
     } catch (error) {
       console.error(
@@ -379,6 +412,9 @@ class KanaOrderHistoryService implements OrderHistoryService {
               } (Target: ${bot.target_address})`
             );
 
+            // Activate bot if not already active
+            copyTradingService.activateBot(bot.id);
+
             // Use the real private key from the bot
             if (bot.user_private_key) {
               copyTradingService
@@ -395,7 +431,10 @@ class KanaOrderHistoryService implements OrderHistoryService {
               console.log(
                 `${getTimestamp()} - ⚠️ No private key found for bot: ${
                   bot.bot_name
-                }`
+                } - SKIPPING TRADE EXECUTION`
+              );
+              console.log(
+                `${getTimestamp()} - 💡 To enable trading, add user_private_key to the bot record`
               );
             }
           }
@@ -569,6 +608,7 @@ class KanaOrderHistoryService implements OrderHistoryService {
     this.isMonitoring = false;
     this.targetProfileAddresses.clear();
     this.trackedOrders.clear();
+    this.lastKnownTargetAddresses.clear();
     console.log(`${getTimestamp()} - ✅ Order history monitoring stopped.`);
   }
 
