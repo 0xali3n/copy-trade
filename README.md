@@ -33,6 +33,9 @@
 - **Gas-Optimized**: Efficient transaction handling with minimal fees
 - **Dynamic Bot Management**: Add/remove bots without backend restarts
 
+![Home Page](img/home.png)
+_Welcome to Social Trade - Your gateway to automated copy trading_
+
 ## 🏗️ Architecture
 
 ### System Architecture Diagram
@@ -251,6 +254,9 @@ pnpm run dev
 - Backend API: http://localhost:3001
 - Health Check: http://localhost:3001/health
 
+![Explorer](img/explorer.png)
+_Platform explorer showing all available features and navigation_
+
 ## 📊 Complete User Journey
 
 ### Step-by-Step User Flow
@@ -294,12 +300,21 @@ graph TD
 - See performance metrics
 - Read trading strategies
 
+![Social Feed](img/social.png)
+_Discover successful traders and their strategies in the social trading feed_
+
 **4. 🤖 Copy Bot Creation**
 
 - Click "Start Copy Bot" on any post
 - Custom bot naming
 - Target wallet confirmation
 - Bot activation
+
+![Create Bot](img/createbot.png)
+_Easy bot creation with custom naming and target wallet confirmation_
+
+![Social Follow Bot](img/social%20Follow%20bot.png)
+_Start copying any trader directly from their posts_
 
 **5. ⚡ Real-time Copy Trading**
 
@@ -309,12 +324,21 @@ graph TD
 - Transaction confirmation
 - Performance tracking
 
+![Trades History](img/trades.png)
+_Track all your copy trades with detailed transaction history and status_
+
 **6. 📊 Management & Analytics**
 
 - Dashboard bot management
 - Trade history viewing
 - Performance analytics
 - Start/stop bot controls
+
+![Dashboard](img/dashboard.png)
+_Comprehensive dashboard for managing all your copy trading bots_
+
+![Settings](img/settings.png)
+_User settings and profile management with wallet integration_
 
 ## 🔧 Configuration
 
@@ -361,45 +385,9 @@ graph TD
 - created_at (Timestamp)
 ```
 
-## 📱 Screenshots
+## 📱 Platform Screenshots
 
-### Screenshot Placeholders
-
-Please add the following screenshots to showcase the platform:
-
-1. **Dashboard Overview** (`screenshots/dashboard.png`)
-
-   - Show the main dashboard with bot management
-   - Display active bots, performance metrics
-   - Include the "Create Bot" and "Test Signal" buttons
-
-2. **Trading Feed** (`screenshots/trading-feed.png`)
-
-   - Show the social trading feed with posts
-   - Display trade posts with "Start Copy Bot" buttons
-   - Include user avatars and trade details
-
-3. **Bot Creation Popup** (`screenshots/bot-creation.png`)
-
-   - Show the bot creation popup from trading feed
-   - Display custom bot name input and target wallet
-   - Include the "Start Bot" button
-
-4. **Trades History** (`screenshots/trades-history.png`)
-
-   - Show the trades page with filtering options
-   - Display successful trades with transaction hashes
-   - Include status indicators and timestamps
-
-5. **Settings Page** (`screenshots/settings.png`)
-
-   - Show user settings with wallet information
-   - Display Google OAuth integration
-   - Include profile management options
-
-6. **Mobile Responsive** (`screenshots/mobile-view.png`)
-   - Show the platform on mobile devices
-   - Display responsive design and touch interactions
+The screenshots above showcase the complete user journey from registration to copy trading, demonstrating the intuitive interface and powerful features of Social Trade.
 
 ## 🔒 Security & Performance
 
